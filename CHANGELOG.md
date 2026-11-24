@@ -1,66 +1,78 @@
 # Changelog
 
-English | 简体中文 — all notable changes are documented in both languages in each release section.
+Each version lists changes in English and Simplified Chinese.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
-
----
+每个版本均提供英文和简体中文的变更记录。
 
 ## [Unreleased]
 
-### English
+The bilingual READMEs now put installation and the first new-tab launch near the top.
 
-- **Changed**: Internal working documents moved out of the repository root — the optimization-space report and the on-device test report (with its 8 evidence screenshots) now live in `docs/` and `docs/screenshots/`; paths inside the test report were updated accordingly. Unit test files stay in `test/`.
-- **Docs**: Both READMEs rewritten in a denser reference style — versioned title, feature sections documenting behavior and edge cases (mirror-redirect invariants, save write ordering, validation rules), plus new "Data and storage keys" and "Files" reference tables. English and 简体中文 pages updated in lockstep.
+### Maintenance & Dependencies
 
-### 简体中文
+- Updated the installation instructions to use the current repository URL and renamed the Simplified Chinese introduction to `README-zh-CN.md`.
+- Moved the [browser test report](./docs/实机测试报告.md) and its [screenshots](./docs/screenshots/) under `docs/`.
 
-- **变更**：内部工作文档移出仓库根目录——优化空间报告与实机测试报告（含 8 张证据截图）移入 `docs/` 与 `docs/screenshots/`，实机测试报告内的引用路径已同步更新。单元测试文件仍保留在 `test/`。
-- **文档**：中英 README 按更密集的参考风格重写——标题带版本号、功能小节写明行为与边界（镜像跳转不变量、保存写序、校验规则），并新增「数据与存储键」「文件」两张参考表；英文页与简体中文页同步更新。
+中英 README 将安装步骤和首次打开新标签页的说明放到了前面。
 
----
+### 维护与依赖更新
+
+- 安装说明改用当前仓库地址，简体中文介绍页更名为 `README-zh-CN.md`。
+- [实机测试报告](./docs/实机测试报告.md)及其[截图](./docs/screenshots/)已移入 `docs/`。
 
 ## [2.2.1] - 2026-11-12
 
-### English
+The options page offers a retry when the settings script fails to load. Storage warnings follow the browser language.
 
-- **Changed**: The options page now handles settings load failures gracefully — it shows an explicit error state with a retry hint instead of a silent blank page.
-- **Changed**: Storage warning messages are now keyed through `chrome.i18n` message IDs (`_locales/`), so warnings are properly localized in English and 简体中文.
-- **Removed**: Unused `kagi-128.png` asset; manifest metadata cleaned up and the version bumped to **2.2.1**.
-- **Docs**: The README is now split into an English front page (`README.md`) and a separate 简体中文 page (`README.zh-CN.md`), each linking to the other; added this bilingual `CHANGELOG.md`.
+### Changed
 
-### 简体中文
+- Failed saves now show the underlying error message when one is available.
+- Warnings for invalid local or synced homepage URLs and failed sync reads are available in English and Simplified Chinese.
 
-- **变更**：选项页现在能优雅处理设置读取失败——显示明确的错误状态与重试提示，而不是静默空白页。
-- **变更**：存储警告文案改为走 `chrome.i18n` 消息键（`_locales/`），警告在 English / 简体中文下均可正确本地化。
-- **移除**：无用的 `kagi-128.png` 资源；清理 manifest 元数据，版本号升至 **2.2.1**。
-- **文档**：README 拆分为英文首页（`README.md`）与独立的简体中文页（`README.zh-CN.md`），二者互相链接；新增中英双语 `CHANGELOG.md`。
+### Fixed
 
----
+- If `settings.js` fails to load, the options page keeps the form disabled, shows an error, and offers a button to reload the page.
+
+### Maintenance & Dependencies
+
+- Split the project introduction into linked English and Simplified Chinese pages and added a bilingual changelog.
+
+设置脚本加载失败时，选项页会提供重试入口。存储警告会跟随浏览器语言显示。
+
+### 优化与改进
+
+- 保存失败时，如果有具体错误信息，选项页会一并显示。
+- 本机或同步的主页地址无效、同步读取失败时，警告支持英文和简体中文。
+
+### 问题修复
+
+- 如果 `settings.js` 加载失败，选项页会禁用表单、显示错误，并提供重新加载页面的按钮。
+
+### 维护与依赖更新
+
+- 将项目介绍拆为互相链接的英文页和简体中文页，并新增双语变更日志。
 
 ## [2.2.0] - 2026-11-12
 
-### English
+The first release lets Chrome open a homepage of your choice in every new tab. The default is Kagi.
 
-Initial release of the extension.
+### Added
 
-- **Added**: New-tab redirect to a custom homepage — default [Kagi](https://kagi.com/), changeable to any valid URL via the options page (with built-in URL validation) and a cross-device sync toggle.
-- **Added**: Zero-latency redirect — on save, the effective homepage is mirrored into the extension page's `localStorage`; the new tab reads it synchronously in `<head>` and navigates without waiting for async storage. A missing or stale mirror is healed back by an async `chrome.storage` check. Implemented as a head-blocking `newtab-redirect.js` script, fully compliant with the MV3 CSP (no inline scripts).
-- **Added**: Failure recovery — if `settings.js` fails to load on the new tab, a recovery page is shown immediately instead of a broken page.
-- **Added**: Sync-safe settings — `chrome.storage.local` is the persistent source of truth; `sync` is best-effort only and failures fall back locally, so sync quota or network issues never lose your settings. Storage reads are issued in parallel on load.
-- **Added**: Bilingual UI — all text goes through `chrome.i18n` (`_locales/en`, `_locales/zh_CN`), following the browser language with English as the fallback.
-- **Added**: Toolbar icons in 16/32/48 px; unit tests via `node --test` (33 tests covering URL validation, the settings load/save state machine, mirror redirect and save write ordering); MIT `LICENSE` and README.
+- Choose a preset or enter a custom HTTP or HTTPS homepage. The extension validates the URL before saving and uses a local copy of the address to start the redirect as the new tab loads.
+- Keep the homepage on the current device by default, or opt in to syncing the address through Chrome.
+- Use the recovery page to open the homepage manually, return to the options page, or retry when a redirect stalls or fails.
+- Use the options and recovery pages in English or Simplified Chinese. The extension follows the browser language and falls back to English.
+- The extension requests only the `storage` permission and loads site icons locally.
 
-### 简体中文
+首个发布版本可让 Chrome 的每个新标签页打开你选定的主页，默认地址为 Kagi。
 
-扩展首个发布版本。
+### 新增功能
 
-- **新增**：新标签页重定向到自定义主页——默认 [Kagi](https://kagi.com/)，可在选项页改为任意合法地址（内置 URL 校验），并可开关跨设备同步。
-- **新增**：零延迟跳转——保存设置时把生效主页镜像进扩展页 `localStorage`，新标签页在 head 内同步读取并立即导航，无需等待异步存储；镜像缺失或过期时由 `chrome.storage` 异步校验回写自愈。实现为 head 阻塞式 `newtab-redirect.js`，完全符合 MV3 CSP（无内联脚本）。
-- **新增**：失败恢复——若新标签页上 `settings.js` 加载失败，立即显示恢复页而不是异常页面。
-- **新增**：同步安全的设置——以 `chrome.storage.local` 为持久真相，`sync` 仅尽力同步、失败可回退，不会因同步配额或网络问题丢设置；加载时并行读取存储。
-- **新增**：中英双语界面——全部文案走 `chrome.i18n`（`_locales/en`、`_locales/zh_CN`），跟随浏览器语言，其他语言回退英文。
-- **新增**：16/32/48 px 工具栏图标；`node --test` 单元测试（33 例，覆盖地址校验、设置读写状态机、镜像跳转与保存写序）；MIT `LICENSE` 与 README。
+- 可选择预设站点，也可填写自定义 HTTP 或 HTTPS 主页。扩展在保存前校验地址，并在新标签页加载时读取本地地址副本，提前发起跳转。
+- 主页地址默认仅保存在本机，可主动开启 Chrome 跨设备同步。
+- 跳转超时或失败时，可通过恢复页手动打开主页、返回选项页或重试。
+- 选项页和恢复页支持英文和简体中文，跟随浏览器语言，其他语言使用英文。
+- 扩展仅申请 `storage` 权限，网站图标从本地加载。
 
-[2.2.1]: https://github.com/YE4IM/chrome-kagi-plugin/compare/v2.2.0...v2.2.1
-[2.2.0]: https://github.com/YE4IM/chrome-kagi-plugin/releases/tag/v2.2.0
+[2.2.1]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.0...v2.2.1
+[2.2.0]: https://github.com/YE4IM/chrome-new-tab-page/releases/tag/v2.2.0

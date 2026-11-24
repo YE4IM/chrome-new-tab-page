@@ -1,99 +1,79 @@
-# Homepage New Tab 2.2.1
+<a href="https://opc.fish"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature-web-dark.svg"><img src="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature.svg" alt="OPC.FISH Project" width="720"></picture></a>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Chrome MV3](https://img.shields.io/badge/Chrome-MV3-blue)](https://developer.chrome.com/docs/extensions/mv3/)
+# Homepage New Tab
 
-English | [简体中文](README.zh-CN.md)
+[**English**](./README.md) | [中文](./README-zh-CN.md)
 
-A Chrome MV3 extension that replaces the new tab page with an immediate redirect to your configured homepage — [Kagi](https://kagi.com/) by default. Navigation starts from a synchronous `localStorage` mirror written at save time, so it happens before anything is drawn; a missing or stale mirror is healed from `chrome.storage`, which is also the persistent source of truth for the settings edited on the options page. Only the `storage` permission is requested and extension pages make no network requests at all. Full history: [CHANGELOG.md](CHANGELOG.md).
+A Chrome extension that opens a website of your choice in every new tab.
 
-## Features
+[Go to installation](#installation)
 
-### New tab redirect
+<img src="./docs/screenshots/05-preset-google.png" alt="Homepage settings with Google selected and https://www.google.com/ filled in" width="540">
 
-- **Mirror redirect**: the new tab page loads a head-blocking script (`newtab-redirect.js`) that synchronously reads the `localStorage` mirror and navigates with `location.replace` before the first paint — no async storage round trip in the hot path. The mirror value is re-validated (http/https scheme, hostname present) so dirty data never redirects.
-- **Never falls back to the default**: when the mirror is missing, invalid or unreadable, the redirect script does nothing on purpose. Navigating to the default would unload the document and leave a stale mirror locked in; instead the full async flow below decides and corrects.
-- **Self-healing**: `newtab.js` reads `chrome.storage` (the persistent truth) and navigates to the effective homepage, then writes it back to the mirror — repairing first use and cleared mirrors. If the mirror already fired and is stale, the second navigation corrects it.
-- **Recovery page**: when the redirect did not take effect — settings load failure, navigation error, or still pending after 3 seconds — a localized recovery page is injected on demand with a manual link to the homepage, a link to the options page and a retry button. If `settings.js` itself fails to load, the default homepage is used as a floor so the recovery page always appears.
+## Contents
 
-### Settings and storage
+[Overview](#overview) · [Requirements](#requirements) · [Installation](#installation) · [Quick Start](#quick-start) · [Features](#features) · [Usage](#usage) · [Troubleshooting](#troubleshooting) · [Testing](#testing) · [Changelog](#changelog) · [License](#license)
 
-- **Validation** (`normalizeHomepage` in `settings.js`): input is trimmed and rejected on control characters. Full `http`/`https` URLs and scheme-less values such as `kagi.com` or `localhost:3000` are accepted (HTTPS is assumed when the scheme is omitted); `host:port` values may carry a non-web scheme, but `javascript:`, `data:`, `file:`, `ftp:`, `blob:`, `about:`, `chrome:` and `chrome-extension:` are always rejected. Saved values are absolute URLs.
-- **Save ordering**: `chrome.storage.local` is written first as the persistent truth, then the `localStorage` mirror is refreshed, and only then is `chrome.storage.sync` written when sync is enabled. A `sync` write failure rolls the local `syncEnabled` flag back and reports the error — the new homepage stays effective locally, and retrying the save re-enables sync. Sync quota, rate and network failures therefore never lose settings.
-- **Load behavior**: `local` and `sync` are read in parallel on every load; the `sync` result is consulted only when sync is enabled. An invalid stored value surfaces a keyed warning (`warnInvalidSaved`, `warnInvalidSync`) instead of silently switching to the default, and a failed `sync` read reports `warnSyncReadFail`; the options page shows a repair hint for these states.
+## Overview
 
-### Options page
+Use your search engine, work dashboard, or local service as the starting point for new tabs. The default destination is `https://kagi.com/`.
 
-- **Editing**: a homepage URL field with inline validation and a quick-pick row of preset chips using bundled brand icons; a custom chip accepts any valid URL. A sync toggle controls cross-device mirroring; reset restores the default homepage.
-- **State handling**: unsaved changes are tracked so status feedback stays accurate; the page listens to `chrome.storage.onChanged`, so edits made in another view appear live. A settings load failure shows an explicit error state with a retry action instead of a silent blank page; if `settings.js` itself fails to load, the form stays disabled and retry reloads the page.
-- **Icons are local**: preset icons ship with the extension and custom icons are generated locally — no external requests, ever.
+## Requirements
 
-### Language
-
-All text goes through `chrome.i18n` (`_locales/en`, `_locales/zh_CN`) and follows the browser language, with English as the fallback. Static texts are injected via `data-i18n` / `data-i18n-attr` (`i18n.js`); dynamic texts (status bar, recovery page) call `chrome.i18n.getMessage` directly. Site and resource names keep their original spelling.
-
-### Privacy
-
-- **Minimal permissions**: only `storage` is requested.
-- **No network**: extension pages enforce a CSP of `script-src 'self'; connect-src 'none'; …` declared in `manifest.json` — no requests, and no inline scripts anywhere (the redirect is an external head-blocking file, semantically equivalent).
+- Google Chrome with support for Manifest V3 and loading unpacked extensions.
+- Git to clone the repository.
 
 ## Installation
 
-1. Clone or download this repository:
+1. Clone the repository.
+
+   ```bash
+   git clone https://github.com/YE4IM/chrome-new-tab-page.git
    ```
-   git clone https://github.com/YE4IM/chrome-kagi-plugin.git
-   ```
-2. Open Chrome and go to `chrome://extensions`
-3. Enable **Developer mode** (top-right toggle)
-4. Click **Load unpacked** and select this repository folder (or download a zip from [Releases](https://github.com/YE4IM/chrome-kagi-plugin/releases), unzip, and select the extracted folder)
-5. The new tab is now taken over; change the homepage via the toolbar extension icon → Options
 
-Upgrading: replace the folder with the new version and reload the extension on `chrome://extensions`. Settings live in `chrome.storage`, which updates do not touch, so configuration carries over without re-setup.
+2. Open `chrome://extensions` and enable **Developer mode**.
+3. Click **Load unpacked** and select the `chrome-new-tab-page` directory containing `manifest.json`.
 
-## Data and storage keys
+## Quick Start
 
-| Key | Area | Meaning |
-| --- | --- | --- |
-| `homepage` | `chrome.storage.local` | Persistent source of truth for the effective homepage |
-| `syncEnabled` | `chrome.storage.local` | Whether cross-device sync is on |
-| `homepage` | `chrome.storage.sync` | Best-effort cross-device copy; consulted only when sync is on |
-| `homepage` | `localStorage` (extension pages) | Synchronous redirect mirror, cache only; written on save, healed on redirect |
+Open a new tab after installation. With the default settings, it opens `https://kagi.com/`.
 
-## Files
+## Features
 
-| File | Role |
-| --- | --- |
-| `manifest.json` | MV3 manifest: new tab override, `storage` permission, page CSP |
-| `src/newtab/newtab.html` | New tab page; loads the three scripts in redirect-first order |
-| `src/newtab/newtab-redirect.js` | Head-blocking mirror redirect, runs before first paint |
-| `src/newtab/newtab.js` | Async truth check, mirror self-heal, recovery page |
-| `src/shared/settings.js` | Shared `HomepageSettings` module: validation, storage, sync, mirror |
-| `src/options/options.html` / `src/options/options.js` | Settings UI |
-| `src/shared/i18n.js` | Static `data-i18n` text injection |
-| `icons/` | Extension icons and search engine logos |
-| `_locales/` | `en` and `zh_CN` message catalogs |
-| `test/` | Unit tests (`node --test`) |
-| `docs/` | Internal reports with evidence screenshots |
+- Opens the saved homepage as the new tab loads, using a local copy of the address to start the redirect early.
+- Keeps settings on the current device by default and lets you sync the homepage through Chrome when you opt in.
+- Uses only the `storage` permission. The extension loads its icons locally and connects to the destination through normal browser navigation.
+- Shows the settings and recovery pages in English or Simplified Chinese based on the browser language, with English as the fallback.
 
-## Development and testing
+## Usage
 
-Plain HTML/JavaScript — no build step, no third-party dependencies.
+1. Open the extension's **Options** from its toolbar menu.
+2. Choose Kagi, Google, Bing, or DuckDuckGo, or enter your own HTTP or HTTPS address. If you omit the scheme, the extension uses HTTPS. For a local HTTP service, enter the full address, such as `http://localhost:3000/`.
+3. Click **Save settings** and open a new tab to check the destination.
 
-Run the unit tests (33 tests in 4 files):
+To sync the URL, enable **Sync homepage across devices** and save on each device that should participate. Chrome extension sync must be enabled. To restore Kagi, choose **Restore default URL** and save.
 
-```
+To update, replace the files in the same directory and click **Reload** for the extension on `chrome://extensions`. This keeps your existing settings.
+
+## Troubleshooting
+
+- If the new tab stays on the recovery page, use its homepage link, open the settings, or retry the redirect.
+- If Chrome sync fails during a save, the new address is already saved on this device. Check Chrome sync and try saving again.
+
+## Testing
+
+Run the unit tests with Node.js from the repository root. They cover URL validation, settings reads and writes, and the redirect cache.
+
+```bash
 node --test
 ```
 
-- `normalizeHomepage.test.js` — URL validation rules
-- `loadSettings.test.js` — settings load state machine and warnings
-- `saveSettings.write-order.test.js` — save write ordering and sync-failure rollback
-- `homepageMirror.test.js` — mirror read/write parity with `newtab-redirect.js`; also asserts every `<script>` in the shipped pages has a `src` (MV3 CSP forbids inline scripts)
+See the [browser test report](./docs/实机测试报告.md) for the earlier manual checks and screenshots.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for release history (bilingual: English / 简体中文).
+See the [bilingual changelog](./CHANGELOG.md) for version history.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](./LICENSE)
