@@ -8,20 +8,20 @@
     "homepage_url": "https://github.com/YE4IM/chrome-kagi-plugin",
     "description": "__MSG_extDescription__",
     "chrome_url_overrides": {
-        "newtab": "newtab.html"
+        "newtab": "src/newtab/newtab.html"
     },
     "permissions": [
         "storage"
     ],
     "options_ui": {
-        "page": "options.html",
+        "page": "src/options/options.html",
         "open_in_tab": true
     },
     "icons": {
-        "16": "kagi-16.png",
-        "32": "kagi-32.png",
-        "48": "kagi-48.png",
-        "128": "kagi.png"
+        "16": "icons/kagi-16.png",
+        "32": "icons/kagi-32.png",
+        "48": "icons/kagi-48.png",
+        "128": "icons/kagi.png"
     },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'none'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'"

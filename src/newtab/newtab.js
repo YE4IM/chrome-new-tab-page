@@ -28,7 +28,7 @@ function showRecovery(text) {
     '<h1>' + msg('recoveryHeading') + '</h1>',
     '<p id="message" role="status">' + msg('recoveryOpening') + '</p>',
     '<a id="target" href="' + DEFAULT_HOMEPAGE + '">' + msg('recoveryManual') + '</a>',
-    '<a id="settings" href="' + chrome.runtime.getURL('options.html') + '">' + msg('recoverySettings') + '</a>',
+    '<a id="settings" href="' + chrome.runtime.getURL('src/options/options.html') + '">' + msg('recoverySettings') + '</a>',
     '<button type="button" id="retry">' + msg('recoveryRetry') + '</button>',
   ].join('');
   document.body.appendChild(main);

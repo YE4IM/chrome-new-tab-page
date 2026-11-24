@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const settings = require('../settings.js');
+const settings = require('../src/shared/settings.js');
 
 // 桩 chrome.storage：记录调用顺序，支持一次性按 area 注入失败。
 function installChromeStub() {

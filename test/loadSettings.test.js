@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const settings = require('../settings.js');
+const settings = require('../src/shared/settings.js');
 
 // 桩 chrome.storage：local/sync 的 get 返回值可配置，sync.get 可注入 lastError 失败。
 function installChromeStub({ local = {}, sync = {}, failSyncGet = false } = {}) {

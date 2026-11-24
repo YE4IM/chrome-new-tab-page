@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { normalizeHomepage, DEFAULT_HOMEPAGE } = require('../settings.js');
+const { normalizeHomepage, DEFAULT_HOMEPAGE } = require('../src/shared/settings.js');
 
 test('合法输入：补全 https、小写化 host、保留路径/查询/锚点、trim 首尾空白', () => {
   assert.strictEqual(normalizeHomepage('kagi.com'), 'https://kagi.com/');

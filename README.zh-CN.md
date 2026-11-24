@@ -64,12 +64,13 @@
 | 文件 | 职责 |
 | --- | --- |
 | `manifest.json` | MV3 清单：新标签页接管、`storage` 权限、页面 CSP |
-| `newtab.html` | 新标签页；按跳转优先的顺序加载三个脚本 |
-| `newtab-redirect.js` | head 阻塞式镜像跳转，先于首帧绘制执行 |
-| `newtab.js` | 异步真相校验、镜像自愈、恢复页 |
-| `settings.js` | 共用 `HomepageSettings` 模块：校验、存储、同步、镜像 |
-| `options.html` / `options.js` | 设置界面 |
-| `i18n.js` | 静态 `data-i18n` 文案注入 |
+| `src/newtab/newtab.html` | 新标签页；按跳转优先的顺序加载三个脚本 |
+| `src/newtab/newtab-redirect.js` | head 阻塞式镜像跳转，先于首帧绘制执行 |
+| `src/newtab/newtab.js` | 异步真相校验、镜像自愈、恢复页 |
+| `src/shared/settings.js` | 共用 `HomepageSettings` 模块：校验、存储、同步、镜像 |
+| `src/options/options.html` / `src/options/options.js` | 设置界面 |
+| `src/shared/i18n.js` | 静态 `data-i18n` 文案注入 |
+| `icons/` | 扩展图标与搜索引擎标志 |
 | `_locales/` | `en` 与 `zh_CN` 文案目录 |
 | `test/` | 单元测试（`node --test`） |
 | `docs/` | 内部报告与证据截图 |

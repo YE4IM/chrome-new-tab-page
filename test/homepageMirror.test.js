@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const settings = require('../settings.js');
+const settings = require('../src/shared/settings.js');
 
 // 桩 localStorage：内存 Map，可注入一次性 set 抛错模拟配额/隐私模式失败。
 function installLocalStorageStub({ failSet = false } = {}) {
@@ -74,7 +74,7 @@ test('saveSettings 镜像写入失败（配额等）不阻断保存，chrome.sto
 // readHomepageMirror 是同一规则的最小副本。提取出来在 vm 里跑，断言其解析结果与
 // readHomepageMirror 一致（防两处规则漂移），并断言不得引用 HomepageSettings（执行先于 settings.js）。
 function redirectTarget(cached) {
-  const script = fs.readFileSync(path.join(__dirname, '..', 'newtab-redirect.js'), 'utf8');
+  const script = fs.readFileSync(path.join(__dirname, '..', 'src', 'newtab', 'newtab-redirect.js'), 'utf8');
   assert.ok(!script.includes('HomepageSettings'), 'newtab-redirect.js 执行先于 settings.js，不得引用 HomepageSettings');
   const sandbox = { localStorage: { getItem: () => cached }, location: { replace: (url) => { sandbox.replaced = url; } }, URL };
   vm.runInNewContext(script, sandbox);
@@ -96,7 +96,7 @@ test('跳转脚本：无镜像/脏镜像不跳转，交给 newtab.js 完整流�
 
 // MV3 CSP（script-src 'self'）会静默拦截内联脚本：曾因 head 内联跳转脚本永不执行引发 P0。
 // 断言扩展页面不再出现无 src 的 <script>，防止同类回归。
-for (const page of ['newtab.html', 'options.html']) {
+for (const page of ['src/newtab/newtab.html', 'src/options/options.html']) {
   test(`${page} 无内联脚本（MV3 CSP 下内联脚本被静默拦截）`, () => {
     const html = fs.readFileSync(path.join(__dirname, '..', page), 'utf8');
     for (const m of html.matchAll(/<script\b([^>]*)>/g)) {

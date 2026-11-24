@@ -64,12 +64,13 @@ Upgrading: replace the folder with the new version and reload the extension on `
 | File | Role |
 | --- | --- |
 | `manifest.json` | MV3 manifest: new tab override, `storage` permission, page CSP |
-| `newtab.html` | New tab page; loads the three scripts in redirect-first order |
-| `newtab-redirect.js` | Head-blocking mirror redirect, runs before first paint |
-| `newtab.js` | Async truth check, mirror self-heal, recovery page |
-| `settings.js` | Shared `HomepageSettings` module: validation, storage, sync, mirror |
-| `options.html` / `options.js` | Settings UI |
-| `i18n.js` | Static `data-i18n` text injection |
+| `src/newtab/newtab.html` | New tab page; loads the three scripts in redirect-first order |
+| `src/newtab/newtab-redirect.js` | Head-blocking mirror redirect, runs before first paint |
+| `src/newtab/newtab.js` | Async truth check, mirror self-heal, recovery page |
+| `src/shared/settings.js` | Shared `HomepageSettings` module: validation, storage, sync, mirror |
+| `src/options/options.html` / `src/options/options.js` | Settings UI |
+| `src/shared/i18n.js` | Static `data-i18n` text injection |
+| `icons/` | Extension icons and search engine logos |
 | `_locales/` | `en` and `zh_CN` message catalogs |
 | `test/` | Unit tests (`node --test`) |
 | `docs/` | Internal reports with evidence screenshots |
