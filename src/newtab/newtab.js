@@ -1,9 +1,9 @@
 'use strict';
 
 const settingsApi = globalThis.HomepageSettings;
-const DEFAULT_HOMEPAGE = settingsApi?.DEFAULT_HOMEPAGE || 'https://kagi.com/';
-const cachedHomepage = settingsApi?.readHomepageMirror();
-let homepage = cachedHomepage || DEFAULT_HOMEPAGE;
+const rulesApi = globalThis.HomepageRules;
+const DEFAULT_HOMEPAGE = rulesApi?.DEFAULT_HOMEPAGE || settingsApi?.DEFAULT_HOMEPAGE || 'https://kagi.com/';
+let homepage = DEFAULT_HOMEPAGE;
 let recoveryTimer;
 
 const msg = (key) => chrome.i18n.getMessage(key) || '';
@@ -35,23 +35,24 @@ function showRecovery(text) {
 }
 
 async function redirect() {
-  // 先设置恢复计时器：快速导航发起后，Chrome 可能会中止对当前页面的 HTML 解析。
+  const openedAt = new Date();
+  const useConfig = (config) => updateHomepage(rulesApi.resolveHomepage(config, openedAt).homepage);
+
+  // 先设置恢复计时器，确保快速跳转失败时手动链接仍可用。
   recoveryTimer = setTimeout(() => showRecovery(msg('recoverySlow')), 3000);
-  let fastRedirectHomepage;
-  if (cachedHomepage) {
+  const cachedConfig = settingsApi?.readHomepageMirror();
+  if (cachedConfig) {
+    useConfig(cachedConfig);
+  } else {
     try {
-      location.replace(cachedHomepage);
-      fastRedirectHomepage = cachedHomepage;
-    } catch { /* 读取设置后再尝试。 */ }
+      useConfig(await settingsApi.loadSettings(useConfig));
+    } catch {
+      // 等待本机读取期间，另一个标签页可能已重建缓存。
+      const availableConfig = settingsApi?.readHomepageMirror();
+      if (availableConfig) useConfig(availableConfig);
+      showRecovery(msg('recoveryLoadFail'));
+    }
   }
-  try {
-    const settings = await settingsApi.loadSettings(updateHomepage);
-    updateHomepage(settings.homepage);
-  } catch {
-    updateHomepage(settingsApi?.readHomepageMirror() || homepage);
-    showRecovery(msg('recoveryLoadFail'));
-  }
-  if (homepage === fastRedirectHomepage) return;
   try {
     location.replace(homepage);
   } catch {

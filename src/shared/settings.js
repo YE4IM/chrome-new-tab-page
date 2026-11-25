@@ -1,55 +1,46 @@
-/* 设置页和新标签页共用的网址校验及存储逻辑。 */
+/* 设置页和新标签页共用的本机设置及缓存。 */
 (function (root) {
   'use strict';
 
-  const DEFAULT_HOMEPAGE = 'https://kagi.com/';
+  const rulesApi = typeof module !== 'undefined' && module.exports ? require('./homepage.js') : root.HomepageRules;
+  if (!rulesApi) return;
+  const { DEFAULT_HOMEPAGE, normalizeHomepage, normalizeTemporaryHomepage, sanitizeSchedule, validateSchedule } = rulesApi;
+  const SCHEDULE_VERSION = 1;
+  const MIRROR_VERSION = 1;
+  const HOMEPAGE_MIRROR_KEY = 'localHomepageConfigV1';
+  const STORAGE_KEYS = ['homepage', 'syncEnabled', 'homepageSchedule', 'temporaryHomepage'];
 
-  // 旧版使用 homepage 缓存。新键只在本机设置确认后写入，避免升级后首次跳到旧地址。
-  const HOMEPAGE_MIRROR_KEY = 'localHomepage';
-
-  function saveHomepageMirror(homepage) {
+  function refreshHomepageMirror({ homepage, rules, temporaryHomepage }) {
+    const value = JSON.stringify({ version: MIRROR_VERSION, homepage, rules, temporaryHomepage });
     try {
-      localStorage.setItem(HOMEPAGE_MIRROR_KEY, homepage);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  function refreshHomepageMirror(homepage) {
-    try {
-      if (localStorage.getItem(HOMEPAGE_MIRROR_KEY) === homepage) return;
-    } catch { /* 读取失败时仍尝试回写。 */ }
-    saveHomepageMirror(homepage);
+      if (localStorage.getItem(HOMEPAGE_MIRROR_KEY) !== value) localStorage.setItem(HOMEPAGE_MIRROR_KEY, value);
+    } catch { /* 权威设置仍可从扩展存储读取。 */ }
   }
 
   function readHomepageMirror() {
     try {
-      const cached = localStorage.getItem(HOMEPAGE_MIRROR_KEY);
-      if (typeof cached !== 'string') return null;
-      const url = new URL(cached);
-      return ['http:', 'https:'].includes(url.protocol) && url.hostname ? url.href : null;
+      const cached = JSON.parse(localStorage.getItem(HOMEPAGE_MIRROR_KEY));
+      if (cached?.version !== MIRROR_VERSION || typeof cached.homepage !== 'string' ||
+          normalizeHomepage(cached.homepage) !== cached.homepage || !Array.isArray(cached.rules)) return null;
+      const { rules, needsRepair } = sanitizeSchedule(cached.rules);
+      const temporaryHomepage = normalizeTemporaryHomepage(cached.temporaryHomepage);
+      if (needsRepair || (cached.temporaryHomepage !== null && !temporaryHomepage)) return null;
+      return { homepage: cached.homepage, rules, temporaryHomepage };
     } catch {
       return null;
     }
   }
 
-  function normalizeHomepage(raw) {
-    if (typeof raw !== 'string') return null;
-    const value = raw.trim();
-    if (!value || /[\u0000-\u001f\u007f]/.test(value)) return null;
-    const scheme = value.match(/^([a-z][a-z\d+.-]*):/i);
-    const hostWithPort = /^[^\s/?#:]+:\d+(?:[/?#]|$)/.test(value);
-    if (scheme && !/^https?$/i.test(scheme[1])) {
-      if (!hostWithPort || /^(javascript|data|file|ftp|blob|about|chrome|chrome-extension)$/i.test(scheme[1])) return null;
-    }
+  function invalidateHomepageMirror() {
+    // 新标签页可在锁外读缓存。写权威设置前同步作废，避免新标签使用旧配置跳转。
     try {
-      const hasWebScheme = scheme && /^https?$/i.test(scheme[1]);
-      const url = new URL(hasWebScheme ? value : `https://${value}`);
-      if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) return null;
-      return url.href;
-    } catch {
-      return null;
+      localStorage.removeItem(HOMEPAGE_MIRROR_KEY);
+      return;
+    } catch { /* 仍可尝试覆盖缓存。 */ }
+    try {
+      localStorage.setItem(HOMEPAGE_MIRROR_KEY, '');
+    } catch (error) {
+      if (readHomepageMirror()) throw error;
     }
   }
 
@@ -68,59 +59,141 @@
     });
   }
 
-  function localSettings(rawHomepage) {
-    const homepage = normalizeHomepage(rawHomepage);
-    const needsRepair = rawHomepage !== undefined && !homepage;
-    return { homepage: homepage || DEFAULT_HOMEPAGE, needsRepair, warning: needsRepair ? 'warnInvalidSaved' : '' };
+  function localSettings(raw) {
+    const homepage = normalizeHomepage(raw.homepage);
+    const needsRepair = raw.homepage !== undefined && !homepage;
+    const schedule = raw.homepageSchedule;
+    const knownSchedule = schedule?.version === SCHEDULE_VERSION;
+    const hasRevision = knownSchedule && Number.isSafeInteger(schedule.revision) && schedule.revision > 0;
+    const { rules, needsRepair: rulesNeedRepair } = sanitizeSchedule(knownSchedule ? schedule.rules : []);
+    const temporaryHomepage = normalizeTemporaryHomepage(raw.temporaryHomepage);
+    return {
+      homepage: homepage || DEFAULT_HOMEPAGE,
+      rules,
+      temporaryHomepage,
+      revision: hasRevision ? schedule.revision : 0,
+      needsRepair,
+      warning: needsRepair ? 'warnInvalidSaved' : '',
+      scheduleNeedsRepair: schedule !== undefined && (!hasRevision || rulesNeedRepair),
+      temporaryNeedsRepair: raw.temporaryHomepage != null && !temporaryHomepage,
+    };
   }
 
-  async function persistHomepage(homepage, needsRepair = false) {
-    // 先清空缓存，避免写入本机成功、刷新缓存失败时仍跳到旧地址。
-    try {
-      localStorage.removeItem(HOMEPAGE_MIRROR_KEY);
-    } catch { /* 无法使用缓存时，仍保存本机设置。 */ }
-    // 与主页一次写入，保证迁移完成标志和迁移后的地址同时生效。
-    const update = needsRepair ? { syncEnabled: false } : { homepage, syncEnabled: false };
+  async function writeLocal(update) {
+    invalidateHomepageMirror();
     await storageCall('local', 'set', update);
-    saveHomepageMirror(homepage);
   }
 
-  async function loadSettings(onLocalHomepage) {
-    // 扩展页面共享同一把锁，防止多个标签页重复迁移或让迁移覆盖用户刚保存的地址。
+  async function loadSettings(onLocalSettings) {
+    // 扩展页面共享同一把锁，防止迁移覆盖刚保存的设置，也防止旧读取重新填充缓存。
     return navigator.locks.request('homepage-settings', async () => {
-      const local = await storageCall('local', 'get', ['homepage', 'syncEnabled']);
-      const settings = localSettings(local.homepage);
+      const local = await storageCall('local', 'get', STORAGE_KEYS);
+      const settings = localSettings(local);
       if (local.syncEnabled !== true) {
-        refreshHomepageMirror(settings.homepage);
+        refreshHomepageMirror(settings);
         return settings;
       }
 
-      onLocalHomepage?.(settings.homepage);
+      onLocalSettings?.(settings);
       let synced;
       try {
+        invalidateHomepageMirror();
         synced = await storageCall('sync', 'get', ['homepage']);
       } catch {
-        // 保留迁移标志，且暂用地址不进入快速跳转缓存。
+        // 保留迁移标志，且暂用设置不进入快速跳转缓存。
         return settings;
       }
       const syncedHomepage = normalizeHomepage(synced.homepage);
-      const migrated = syncedHomepage ? localSettings(syncedHomepage) : settings;
+      const migrated = syncedHomepage ? localSettings({ ...local, homepage: syncedHomepage }) : settings;
+      // 缺少有效地址时保留本机的坏值，让设置页仍能提示修复。
+      const update = migrated.needsRepair ? { syncEnabled: false } : { homepage: migrated.homepage, syncEnabled: false };
       try {
-        // 缺少有效地址时保留原值，让已有的本机地址修复提示继续工作。
-        await persistHomepage(migrated.homepage, migrated.needsRepair);
-      } catch { /* 当前页仍可使用已取得的有效主页，下次重新迁移。 */ }
+        // 与主页一次写入，保证迁移完成标志和迁移后的地址同时生效。
+        await storageCall('local', 'set', update);
+        refreshHomepageMirror(migrated);
+      } catch {
+        // 当前页可以使用同步地址，保存草稿时仍与实际存储的地址比较。
+        return migrated.homepage === settings.homepage ? migrated : { ...migrated, persistedHomepage: settings.homepage };
+      }
       return migrated;
     });
   }
 
-  async function saveSettings({ homepage }) {
-    const normalized = normalizeHomepage(homepage);
-    if (!normalized) throw new Error('Invalid HTTP or HTTPS URL');
-    await navigator.locks.request('homepage-settings', () => persistHomepage(normalized));
-    return localSettings(normalized);
+  function settingsConflict(code) {
+    const error = new Error(code);
+    error.code = code;
+    return error;
   }
 
-  const api = { DEFAULT_HOMEPAGE, normalizeHomepage, loadSettings, saveSettings, saveHomepageMirror, readHomepageMirror };
+  async function saveSettings({ homepage, rules, expectedRevision, expectedHomepage }) {
+    const normalized = normalizeHomepage(homepage);
+    if (!normalized) throw new Error('Invalid HTTP or HTTPS URL');
+    const validation = rules === undefined ? null : validateSchedule(rules);
+    if (validation?.errors.length) throw new Error('Invalid homepage schedule');
+    return navigator.locks.request('homepage-settings', async () => {
+      const local = await storageCall('local', 'get', STORAGE_KEYS);
+      const settings = localSettings(local);
+      if ((expectedRevision !== undefined && expectedRevision !== settings.revision) ||
+          (expectedHomepage !== undefined && expectedHomepage !== settings.homepage)) {
+        throw settingsConflict('SCHEDULE_CONFLICT');
+      }
+      const update = { homepage: normalized, syncEnabled: false };
+      if (validation || !settings.scheduleNeedsRepair) {
+        update.homepageSchedule = {
+          version: SCHEDULE_VERSION,
+          revision: settings.revision === Number.MAX_SAFE_INTEGER ? 1 : settings.revision + 1,
+          rules: validation?.rules ?? settings.rules,
+        };
+      }
+      await writeLocal(update);
+      const saved = localSettings({ ...local, ...update });
+      refreshHomepageMirror(saved);
+      return saved;
+    });
+  }
+
+  async function saveTemporaryHomepage({ homepage, durationMs, expiresAt }) {
+    const startsAt = Date.now();
+    const temporaryHomepage = normalizeTemporaryHomepage({
+      homepage,
+      startsAt,
+      expiresAt: durationMs === undefined ? expiresAt : startsAt + durationMs,
+    });
+    if (!temporaryHomepage) throw settingsConflict('INVALID_TEMPORARY_EXPIRY');
+    return updateTemporaryHomepage(temporaryHomepage);
+  }
+
+  async function clearTemporaryHomepage(expectedTemporaryHomepage) {
+    return updateTemporaryHomepage(null, expectedTemporaryHomepage);
+  }
+
+  function updateTemporaryHomepage(temporaryHomepage, expected) {
+    return navigator.locks.request('homepage-settings', async () => {
+      const local = await storageCall('local', 'get', STORAGE_KEYS);
+      const current = normalizeTemporaryHomepage(local.temporaryHomepage);
+      if (expected && (!current || current.homepage !== expected.homepage ||
+          current.startsAt !== expected.startsAt || current.expiresAt !== expected.expiresAt)) {
+        throw settingsConflict('TEMPORARY_CONFLICT');
+      }
+      if (temporaryHomepage && temporaryHomepage.expiresAt <= Date.now()) {
+        throw settingsConflict('INVALID_TEMPORARY_EXPIRY');
+      }
+      await writeLocal({ temporaryHomepage });
+      const saved = localSettings({ ...local, temporaryHomepage });
+      if (local.syncEnabled !== true) refreshHomepageMirror(saved);
+      return saved;
+    });
+  }
+
+  const api = {
+    DEFAULT_HOMEPAGE,
+    normalizeHomepage,
+    loadSettings,
+    saveSettings,
+    saveTemporaryHomepage,
+    clearTemporaryHomepage,
+    readHomepageMirror,
+  };
   root.HomepageSettings = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(globalThis);

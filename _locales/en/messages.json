@@ -3,34 +3,27 @@
   "extDescription": { "message": "Redirect the new tab to your custom homepage" },
   "pageTitle": { "message": "Homepage Settings · Homepage New Tab" },
   "logoAlt": { "message": "Site icon" },
-  "headerSubtitle": { "message": "Set the site your new tab automatically opens to" },
+  "headerSubtitle": { "message": "Choose what opens in a new tab." },
   "fieldsetAria": { "message": "Homepage settings" },
-  "homepageLabel": { "message": "Homepage URL" },
+  "homepageLabel": { "message": "Base homepage URL" },
   "hpHelp": { "message": "Supports domains, intranet addresses and IPv6. HTTPS is assumed when the scheme is omitted; use http:// for local services." },
   "errMsg": { "message": "Enter a valid HTTP or HTTPS URL, e.g. kagi.com or http://localhost:3000/." },
   "presetsLabel": { "message": "Quick pick" },
   "chipsAria": { "message": "Quickly fill in a homepage URL" },
   "customChip": { "message": "Other URL" },
   "resetBtn": { "message": "Restore default" },
-  "saveBtn": { "message": "Save settings" },
+  "saveBtn": { "message": "Save schedule" },
   "retryBtn": { "message": "Reload settings" },
-  "footerNote": { "message": "Save after choosing or editing the URL · Site icons load locally" },
+  "footerNote": { "message": "Site icons load locally." },
   "statusLoading": { "message": "Loading settings…" },
   "statusLoadFail": { "message": "Couldn't load settings. Your existing settings are unchanged." },
-  "statusDirty": { "message": "Unsaved changes — click Save settings to apply them." },
-  "statusCurrent": {
-    "message": "Current homepage: $URL$",
-    "placeholders": { "url": { "content": "$1" } }
-  },
+  "statusDirty": { "message": "Unsaved changes. Save the schedule to apply them." },
   "statusSaving": { "message": "Saving settings…" },
-  "statusSaved": {
-    "message": "Saved — takes effect on your next new tab. Current homepage: $URL$",
-    "placeholders": { "url": { "content": "$1" } }
-  },
+  "statusSaved": { "message": "Schedule saved. Changes apply on your next new tab." },
   "saveBtnSaving": { "message": "Saving…" },
   "saveBtnSaved": { "message": "✓ Saved" },
   "statusSaveFail": { "message": "Save failed. Please try again." },
-  "statusOtherPageUpdate": { "message": "The homepage changed in another settings tab. Your draft is still here and will be applied if you save." },
+  "statusOtherPageUpdate": { "message": "Your draft is still here. Review the saved schedule before continuing." },
   "statusRefreshFail": { "message": "Couldn't read the updated settings. Reopen the settings page later." },
   "warnInvalidSaved": { "message": "Saved homepage URL is invalid — using the default homepage for now. Please save your settings again." },
   "logoPresetAlt": {
@@ -48,5 +41,94 @@
   "recoveryRetry": { "message": "Retry" },
   "recoverySlow": { "message": "Redirect hasn't finished yet — open the homepage manually or check settings." },
   "recoveryLoadFail": { "message": "Couldn’t read saved settings. Trying to open the homepage." },
-  "recoveryRedirectFail": { "message": "Automatic redirect failed — open the homepage manually or check settings." }
+  "recoveryRedirectFail": { "message": "Automatic redirect failed — open the homepage manually or check settings." },
+  "currentTitle": { "message": "Current homepage" },
+  "temporaryTitle": { "message": "Temporary homepage" },
+  "temporaryUrl": { "message": "Temporary URL" },
+  "temporaryDuration": { "message": "Duration" },
+  "duration30": { "message": "30 minutes" },
+  "duration60": { "message": "1 hour" },
+  "durationCustom": { "message": "Set an end time" },
+  "temporaryDate": { "message": "Local end date and time" },
+  "startTemporary": { "message": "Enable now" },
+  "replaceTemporary": { "message": "Replace temporary homepage" },
+  "endTemporary": { "message": "End early" },
+  "baseTitle": { "message": "Base homepage and weekly schedule" },
+  "weeklyTitle": { "message": "Weekly schedule" },
+  "scheduleHelp": { "message": "Rules use this device’s local time. Overnight rules start on the selected days." },
+  "addRule": { "message": "Add rule" },
+  "removeRule": { "message": "Remove" },
+  "removeNamedRule": {
+    "message": "Remove rule “$NAME$”",
+    "placeholders": { "name": { "content": "$1" } }
+  },
+  "ruleName": { "message": "Rule name" },
+  "ruleDays": { "message": "Start days" },
+  "ruleStart": { "message": "Start time" },
+  "ruleEnd": { "message": "End time" },
+  "ruleUrl": { "message": "Destination URL" },
+  "ruleEnabled": { "message": "Enabled" },
+  "ruleDisabled": { "message": "Disabled" },
+  "unnamedRule": {
+    "message": "Rule $NUMBER$",
+    "placeholders": { "number": { "content": "$1" } }
+  },
+  "ruleNameError": { "message": "Enter a rule name." },
+  "ruleDaysError": { "message": "Select at least one start day." },
+  "ruleTimeError": { "message": "Enter a valid time." },
+  "ruleEqualTimes": { "message": "Start and end times must differ." },
+  "ruleGenericError": { "message": "Remove this rule and add it again." },
+  "ruleFieldError": {
+    "message": "$NAME$: $ERROR$",
+    "placeholders": { "name": { "content": "$1" }, "error": { "content": "$2" } }
+  },
+  "ruleOverlap": {
+    "message": "“$FIRST$” and “$SECOND$” overlap on $DAY$, $TIMES$.",
+    "placeholders": { "first": { "content": "$1" }, "second": { "content": "$2" }, "day": { "content": "$3" }, "times": { "content": "$4" } }
+  },
+  "timeRange": {
+    "message": "$FROM$–$TO$",
+    "placeholders": { "from": { "content": "$1" }, "to": { "content": "$2" } }
+  },
+  "previewTitle": { "message": "Time preview" },
+  "previewDate": { "message": "Local date and time" },
+  "previewZone": {
+    "message": "Time zone: $ZONE$ ($OFFSET$)",
+    "placeholders": { "zone": { "content": "$1" }, "offset": { "content": "$2" } }
+  },
+  "previewNow": { "message": "Now" },
+  "previewExpiry": { "message": "When temporary homepage ends" },
+  "previewDraft": { "message": "Previewing unsaved changes" },
+  "previewInvalidDraft": { "message": "Fix the URL or weekly rules to preview this draft." },
+  "repeatedLocalTime": { "message": "This local time occurs twice. The first occurrence is used." },
+  "invalidDate": { "message": "Choose a valid local date and time. If the clock skips this time, choose another time." },
+  "invalidTemporaryDate": { "message": "Choose a valid local date and time in the future." },
+  "sourceBase": { "message": "Base homepage" },
+  "sourceSchedule": {
+    "message": "“$NAME$” · $TIMES$",
+    "placeholders": { "name": { "content": "$1" }, "times": { "content": "$2" } }
+  },
+  "sourceTemporary": { "message": "Temporary homepage" },
+  "currentTemporary": {
+    "message": "Temporary homepage until $DATE$. Then opens $URL$.",
+    "placeholders": { "date": { "content": "$1" }, "url": { "content": "$2" } }
+  },
+  "temporaryEndHint": {
+    "message": "Ends at $DATE$ if enabled now.",
+    "placeholders": { "date": { "content": "$1" } }
+  },
+  "temporaryStarted": { "message": "Temporary homepage enabled." },
+  "temporaryEnded": { "message": "Temporary homepage ended." },
+  "temporaryChanged": { "message": "Another settings tab changed the temporary homepage. Review the current homepage before trying again." },
+  "scheduleConflict": { "message": "Another settings tab saved changes. Review its schedule before applying your draft." },
+  "savedSchedule": { "message": "View saved schedule" },
+  "noSavedRules": { "message": "No weekly rules" },
+  "savedRuleSummary": {
+    "message": "$NAME$ · $DAYS$ · $TIMES$ · $URL$ · $STATE$",
+    "placeholders": { "name": { "content": "$1" }, "days": { "content": "$2" }, "times": { "content": "$3" }, "url": { "content": "$4" }, "state": { "content": "$5" } }
+  },
+  "useSavedSchedule": { "message": "Load saved schedule" },
+  "keepScheduleDraft": { "message": "Keep my draft" },
+  "warnInvalidSchedule": { "message": "Invalid or overlapping weekly rules were skipped. Verify the remaining rules and save the schedule to repair it." },
+  "warnInvalidTemporary": { "message": "The saved temporary homepage is invalid. Enable a temporary homepage to replace it." }
 }

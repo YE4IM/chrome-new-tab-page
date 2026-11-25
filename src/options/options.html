@@ -81,7 +81,7 @@
         .card {
             position: relative;
             width: 100%;
-            max-width: 560px;
+            max-width: 660px;
             margin: auto 0;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -253,6 +253,84 @@
         .status.error { color: var(--danger); }
         #retry { display: block; margin: 12px auto 0; }
 
+        .section {
+            margin-top: 22px;
+            padding-top: 18px;
+            border-top: 1px solid var(--input-border);
+        }
+        .section h2 { margin: 0 0 12px; font-size: 16px; }
+        .current {
+            padding: 15px 18px;
+            border: 1px solid var(--input-border);
+            border-radius: 14px;
+            background: var(--accent-soft);
+        }
+        .current h2 { margin-bottom: 4px; }
+        .result { margin: 0; overflow-wrap: anywhere; }
+        .result strong { display: block; }
+        .result p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+        .current button { margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .full-width { grid-column: 1 / -1; }
+        .control { display: block; min-width: 0; }
+        .control .field-label { margin-bottom: 4px; }
+        .control input, .control select {
+            display: block;
+            width: 100%;
+            min-height: 40px;
+            padding: 7px 10px;
+            border: 1px solid var(--input-border);
+            border-radius: 9px;
+            background: var(--input-bg);
+            color: var(--text);
+            font: inherit;
+            font-size: 14px;
+        }
+        .control input:focus-visible, .control select:focus-visible,
+        summary:focus-visible, .day input:focus-visible + span {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+        [aria-invalid="true"] { border-color: var(--danger) !important; }
+        .actions.compact { margin-top: 12px; }
+        .compact .btn, .btn.small { padding: 7px 13px; font-size: 13px; }
+        .btn.secondary { border: 1px solid var(--input-border); background: var(--input-bg); color: var(--accent-strong); }
+        .btn.secondary:hover { border-color: var(--accent); }
+        .btn:disabled { opacity: 0.55; cursor: default; }
+        summary { color: var(--text); cursor: pointer; font-weight: 600; }
+        .rules { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+        .rule { padding: 12px; border: 1px solid var(--input-border); border-radius: 12px; }
+        .rule .grid { gap: 8px; }
+        .rule-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; }
+        input[type="checkbox"] { accent-color: var(--accent-strong); }
+        .days { display: flex; flex-wrap: wrap; gap: 5px; padding-bottom: 4px; }
+        .days legend { padding: 0; }
+        .day { position: relative; font-size: 12px; }
+        .day input { position: absolute; opacity: 0; }
+        .day span {
+            display: inline-block;
+            min-width: 35px;
+            text-align: center;
+            padding: 4px 6px;
+            border: 1px solid var(--input-border);
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        .day input:checked + span { border-color: var(--accent); color: var(--accent-strong); background: var(--accent-soft); }
+        .days[aria-invalid="true"] .day span { border-color: var(--danger); }
+        .rule-errors { padding-inline-start: 20px; }
+        .conflict { margin-top: 12px; padding: 12px; border: 1px solid var(--input-border); border-radius: 9px; }
+        .conflict p, .conflict ul { margin: 6px 0; overflow-wrap: anywhere; }
+        #previewZone, #previewDraft { margin: 8px 0; }
+        #previewResult { margin-top: 10px; }
+        #temporaryStatus { text-align: start; min-height: 0; margin-top: 8px; }
+        #temporaryStatus:empty { margin: 0; }
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
         .footer {
             margin-top: 18px;
             padding-top: 16px;
@@ -274,7 +352,46 @@
             <p data-i18n="headerSubtitle">设置打开新标签页时自动跳转的网站地址</p>
         </div>
 
-        <form id="settingsForm" novalidate aria-busy="false">
+        <section class="section current" aria-labelledby="currentTitle">
+            <h2 id="currentTitle" data-i18n="currentTitle">当前主页</h2>
+            <div class="result" id="currentResult" role="status" aria-live="polite" aria-atomic="true"></div>
+            <button type="button" class="btn secondary small" id="endTemporary" hidden data-i18n="endTemporary">提前结束</button>
+        </section>
+
+        <form class="section" id="temporaryForm" novalidate aria-labelledby="temporaryTitle" aria-busy="false">
+            <h2 id="temporaryTitle" data-i18n="temporaryTitle">临时主页</h2>
+            <fieldset id="temporaryFields" disabled aria-labelledby="temporaryTitle">
+                <div class="grid">
+                    <label class="control">
+                        <span class="field-label" data-i18n="temporaryUrl">临时主页地址</span>
+                        <input id="temporaryUrl" type="text" inputmode="url" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="https://example.com/" aria-describedby="temporaryUrlError">
+                        <span class="error-msg" id="temporaryUrlError" role="alert" hidden data-i18n="errMsg">请输入有效的 HTTP 或 HTTPS 网址。</span>
+                    </label>
+                    <label class="control">
+                        <span class="field-label" data-i18n="temporaryDuration">启用时长</span>
+                        <select id="temporaryDuration" aria-describedby="temporaryEndHint">
+                            <option value="1800000" data-i18n="duration30">30 分钟</option>
+                            <option value="3600000" data-i18n="duration60">1 小时</option>
+                            <option value="custom" data-i18n="durationCustom">指定结束时间</option>
+                        </select>
+                    </label>
+                    <label class="control full-width" id="temporaryDateField" hidden>
+                        <span class="field-label" data-i18n="temporaryDate">本地结束时间</span>
+                        <input id="temporaryDate" type="datetime-local" aria-describedby="temporaryDateError temporaryEndHint">
+                        <span class="error-msg" id="temporaryDateError" role="alert" hidden></span>
+                    </label>
+                </div>
+                <p class="field-help" id="temporaryEndHint" hidden></p>
+                <div class="actions compact">
+                    <button type="submit" class="btn secondary" id="startTemporary" data-i18n="startTemporary">立即启用</button>
+                </div>
+            </fieldset>
+            <div id="temporaryStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+        </form>
+
+        <section class="section" aria-labelledby="baseTitle">
+            <h2 id="baseTitle" data-i18n="baseTitle">基础主页与每周时段</h2>
+            <form id="settingsForm" novalidate aria-busy="false">
             <fieldset id="settingsFields" disabled aria-label="主页设置" data-i18n-attr="aria-label:fieldsetAria">
                 <label class="field-label" for="hp" data-i18n="homepageLabel">主页地址</label>
                 <div class="input-wrap" id="inputWrap">
@@ -305,19 +422,95 @@
                     </div>
                 </div>
 
+                <details class="section" id="scheduleDetails">
+                    <summary data-i18n="weeklyTitle">每周时段</summary>
+                    <p class="field-help" id="scheduleHelp" data-i18n="scheduleHelp">时段按设备本地时间执行，跨午夜的时段从所选星期开始。</p>
+                    <div id="rules" class="rules" aria-describedby="scheduleHelp"></div>
+                    <ul id="ruleErrors" class="error-msg rule-errors" role="alert" hidden></ul>
+                    <div class="actions compact">
+                        <button type="button" class="btn secondary" id="addRule" data-i18n="addRule">添加时段</button>
+                    </div>
+                </details>
+
                 <div class="actions">
                     <button type="button" class="btn btn-reset" id="reset" data-i18n="resetBtn">恢复默认地址</button>
-                    <button type="submit" class="btn btn-save" id="save" disabled data-i18n="saveBtn">保存设置</button>
+                    <button type="submit" class="btn btn-save" id="save" disabled data-i18n="saveBtn">保存排程</button>
                 </div>
 
+                <div class="conflict" id="scheduleConflict" hidden>
+                    <p class="error-msg" role="alert" data-i18n="scheduleConflict">另一设置页已保存排程。请核对当前保存的版本。</p>
+                    <details>
+                        <summary data-i18n="savedSchedule">查看已保存的排程</summary>
+                        <p id="conflictHomepage"></p>
+                        <ul id="conflictRules"></ul>
+                    </details>
+                    <div class="actions compact">
+                        <button type="button" class="btn secondary" id="useSavedSchedule" data-i18n="useSavedSchedule">载入已保存的排程</button>
+                        <button type="button" class="btn secondary" id="keepScheduleDraft" data-i18n="keepScheduleDraft">保留我的草稿</button>
+                    </div>
+                </div>
             </fieldset>
-        </form>
-        <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
-        <button type="button" class="btn btn-reset" id="retry" hidden data-i18n="retryBtn">重新读取设置</button>
+            </form>
+            <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+            <button type="button" class="btn btn-reset" id="retry" hidden data-i18n="retryBtn">重新读取设置</button>
+            <div class="error-msg" id="settingsWarnings" role="status" hidden></div>
+        </section>
+
+        <section class="section" aria-labelledby="previewTitle">
+            <h2 id="previewTitle" data-i18n="previewTitle">时间预览</h2>
+            <fieldset id="previewFields" disabled aria-labelledby="previewTitle">
+                <label class="control">
+                    <span class="field-label" data-i18n="previewDate">本地日期和时间</span>
+                    <input id="previewDate" type="datetime-local" aria-describedby="previewZone previewError">
+                </label>
+                <p id="previewZone" class="field-help"></p>
+                <div class="actions compact">
+                    <button type="button" class="btn secondary" id="previewNow" data-i18n="previewNow">现在</button>
+                    <button type="button" class="btn secondary" id="previewExpiry" hidden data-i18n="previewExpiry">临时主页到期时</button>
+                </div>
+                <p id="previewDraft" class="field-help" hidden data-i18n="previewDraft">预览未保存的更改</p>
+                <div id="previewError" class="error-msg" role="status" hidden></div>
+                <div id="previewResult" class="result" role="status" aria-live="polite" aria-atomic="true"></div>
+            </fieldset>
+        </section>
 
         <div class="footer" data-i18n="footerNote">选择或编辑地址后请保存 · 网站图标在本机加载</div>
     </main>
 
+    <template id="ruleTemplate">
+        <div class="rule" role="group">
+            <div class="grid">
+                <label class="control">
+                    <span class="field-label" data-label="ruleName"></span>
+                    <input type="text" data-field="name" autocomplete="off">
+                </label>
+                <div class="rule-actions">
+                    <label class="toggle">
+                        <input type="checkbox" data-field="enabled">
+                        <span data-label="ruleEnabled"></span>
+                    </label>
+                    <button type="button" class="btn btn-reset small" data-remove data-label="removeRule"></button>
+                </div>
+                <fieldset class="days full-width" data-field="days">
+                    <legend class="field-label" data-label="ruleDays"></legend>
+                </fieldset>
+                <label class="control">
+                    <span class="field-label" data-label="ruleStart"></span>
+                    <input type="time" data-field="start">
+                </label>
+                <label class="control">
+                    <span class="field-label" data-label="ruleEnd"></span>
+                    <input type="time" data-field="end">
+                </label>
+                <label class="control full-width">
+                    <span class="field-label" data-label="ruleUrl"></span>
+                    <input type="text" data-field="homepage" inputmode="url" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="https://example.com/">
+                </label>
+            </div>
+        </div>
+    </template>
+
+    <script src="../shared/homepage.js"></script>
     <script src="../shared/settings.js"></script>
     <script src="../shared/i18n.js"></script>
     <script src="options.js"></script>

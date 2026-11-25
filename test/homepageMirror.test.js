@@ -14,25 +14,36 @@ function installLocalStorageStub() {
   return globalThis.localStorage;
 }
 
-test('saveHomepageMirror 写入并读回同一规范化地址', () => {
-  const stub = installLocalStorageStub();
-  assert.strictEqual(settings.saveHomepageMirror('https://example.com/'), true);
-  assert.strictEqual(stub.getItem('localHomepage'), 'https://example.com/');
-  assert.strictEqual(settings.readHomepageMirror(), 'https://example.com/');
+const mirrorKey = 'localHomepageConfigV1';
+const homepage = 'https://example.com/';
+const cached = { version: 1, homepage, rules: [], temporaryHomepage: null };
+
+test('readHomepageMirror 读取完整的新版配置', () => {
+  const storage = installLocalStorageStub();
+  storage.setItem(mirrorKey, JSON.stringify(cached));
+  assert.deepStrictEqual(settings.readHomepageMirror(), { homepage, rules: [], temporaryHomepage: null });
 });
 
-test('readHomepageMirror：空存储返回 null；非 http/https 协议拒绝；脏 JSON 无关字符串拒绝', () => {
-  installLocalStorageStub();
+test('readHomepageMirror 拒绝损坏或未知版本的配置', () => {
+  const storage = installLocalStorageStub();
   assert.strictEqual(settings.readHomepageMirror(), null);
-  settings.saveHomepageMirror('javascript:alert(1)');
-  assert.strictEqual(settings.readHomepageMirror(), null);
-  globalThis.localStorage.setItem('localHomepage', 'not-a-url');
-  assert.strictEqual(settings.readHomepageMirror(), null);
+  for (const value of [
+    'not-json',
+    JSON.stringify({ ...cached, version: 2 }),
+    JSON.stringify({ ...cached, homepage: 'javascript:alert(1)' }),
+    JSON.stringify({ ...cached, rules: [{ homepage }] }),
+    JSON.stringify({ ...cached, temporaryHomepage: { homepage, startsAt: 1, expiresAt: 0 } }),
+    JSON.stringify({ ...cached, temporaryHomepage: undefined }),
+  ]) {
+    storage.setItem(mirrorKey, value);
+    assert.strictEqual(settings.readHomepageMirror(), null);
+  }
 });
 
 test('只有旧版缓存时忽略，等待异步加载', () => {
   const storage = installLocalStorageStub();
   storage.setItem('homepage', 'https://old.example/');
+  storage.setItem('localHomepage', 'https://previous-local.example/');
   assert.strictEqual(settings.readHomepageMirror(), null);
 });
 

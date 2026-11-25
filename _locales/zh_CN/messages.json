@@ -3,34 +3,27 @@
   "extDescription": { "message": "将新标签页重定向到自定义主页" },
   "pageTitle": { "message": "主页设置 · 主页新标签页" },
   "logoAlt": { "message": "网站图标" },
-  "headerSubtitle": { "message": "设置打开新标签页时自动跳转的网站地址" },
+  "headerSubtitle": { "message": "设置打开新标签页时自动跳转的网站。" },
   "fieldsetAria": { "message": "主页设置" },
-  "homepageLabel": { "message": "主页地址" },
+  "homepageLabel": { "message": "基础主页地址" },
   "hpHelp": { "message": "支持域名、内网地址和 IPv6；省略协议时使用 HTTPS，本地服务请填写 http://。" },
   "errMsg": { "message": "请输入有效的 HTTP 或 HTTPS 网址，例如 kagi.com 或 http://localhost:3000/。" },
   "presetsLabel": { "message": "快速选择" },
   "chipsAria": { "message": "快速填入主页地址" },
   "customChip": { "message": "其他地址" },
   "resetBtn": { "message": "恢复默认地址" },
-  "saveBtn": { "message": "保存设置" },
+  "saveBtn": { "message": "保存排程" },
   "retryBtn": { "message": "重新读取设置" },
-  "footerNote": { "message": "选择或编辑地址后请保存 · 网站图标在本机加载" },
+  "footerNote": { "message": "网站图标在本机加载。" },
   "statusLoading": { "message": "正在读取设置…" },
   "statusLoadFail": { "message": "读取设置失败，请重试。现有设置未被修改。" },
-  "statusDirty": { "message": "有未保存的修改，点击「保存设置」后生效。" },
-  "statusCurrent": {
-    "message": "当前主页：$URL$",
-    "placeholders": { "url": { "content": "$1" } }
-  },
+  "statusDirty": { "message": "有未保存的修改。保存排程后生效。" },
   "statusSaving": { "message": "正在保存设置…" },
-  "statusSaved": {
-    "message": "已保存，打开新标签页即可生效。当前主页：$URL$",
-    "placeholders": { "url": { "content": "$1" } }
-  },
+  "statusSaved": { "message": "已保存排程，打开新标签页即可生效。" },
   "saveBtnSaving": { "message": "正在保存…" },
   "saveBtnSaved": { "message": "✓ 已保存" },
   "statusSaveFail": { "message": "保存失败，请重试。" },
-  "statusOtherPageUpdate": { "message": "主页已在另一个设置页更改。当前草稿已保留，保存后将应用。" },
+  "statusOtherPageUpdate": { "message": "草稿已保留。请核对已保存的排程后继续。" },
   "statusRefreshFail": { "message": "无法读取更新后的设置，请稍后重新打开设置页。" },
   "warnInvalidSaved": { "message": "已保存的地址无效，暂时使用默认主页。请重新保存设置。" },
   "logoPresetAlt": {
@@ -48,5 +41,94 @@
   "recoveryRetry": { "message": "重试" },
   "recoverySlow": { "message": "跳转尚未完成，可以手动打开主页或检查设置。" },
   "recoveryLoadFail": { "message": "无法读取已保存的设置，正在尝试打开主页。" },
-  "recoveryRedirectFail": { "message": "自动跳转失败，请手动打开主页或检查设置。" }
+  "recoveryRedirectFail": { "message": "自动跳转失败，请手动打开主页或检查设置。" },
+  "currentTitle": { "message": "当前主页" },
+  "temporaryTitle": { "message": "临时主页" },
+  "temporaryUrl": { "message": "临时主页地址" },
+  "temporaryDuration": { "message": "启用时长" },
+  "duration30": { "message": "30 分钟" },
+  "duration60": { "message": "1 小时" },
+  "durationCustom": { "message": "指定结束时间" },
+  "temporaryDate": { "message": "本地结束日期和时间" },
+  "startTemporary": { "message": "立即启用" },
+  "replaceTemporary": { "message": "替换临时主页" },
+  "endTemporary": { "message": "提前结束" },
+  "baseTitle": { "message": "基础主页与每周时段" },
+  "weeklyTitle": { "message": "每周时段" },
+  "scheduleHelp": { "message": "时段按设备本地时间执行。跨午夜的时段从所选星期开始。" },
+  "addRule": { "message": "添加时段" },
+  "removeRule": { "message": "删除" },
+  "removeNamedRule": {
+    "message": "删除时段「$NAME$」",
+    "placeholders": { "name": { "content": "$1" } }
+  },
+  "ruleName": { "message": "时段名称" },
+  "ruleDays": { "message": "开始星期" },
+  "ruleStart": { "message": "开始时间" },
+  "ruleEnd": { "message": "结束时间" },
+  "ruleUrl": { "message": "目标网址" },
+  "ruleEnabled": { "message": "启用" },
+  "ruleDisabled": { "message": "停用" },
+  "unnamedRule": {
+    "message": "时段 $NUMBER$",
+    "placeholders": { "number": { "content": "$1" } }
+  },
+  "ruleNameError": { "message": "请输入时段名称。" },
+  "ruleDaysError": { "message": "请至少选择一个开始星期。" },
+  "ruleTimeError": { "message": "请输入有效时间。" },
+  "ruleEqualTimes": { "message": "开始与结束时间不能相同。" },
+  "ruleGenericError": { "message": "请删除此时段并重新添加。" },
+  "ruleFieldError": {
+    "message": "「$NAME$」：$ERROR$",
+    "placeholders": { "name": { "content": "$1" }, "error": { "content": "$2" } }
+  },
+  "ruleOverlap": {
+    "message": "「$FIRST$」和「$SECOND$」在$DAY$ $TIMES$ 重叠。",
+    "placeholders": { "first": { "content": "$1" }, "second": { "content": "$2" }, "day": { "content": "$3" }, "times": { "content": "$4" } }
+  },
+  "timeRange": {
+    "message": "$FROM$–$TO$",
+    "placeholders": { "from": { "content": "$1" }, "to": { "content": "$2" } }
+  },
+  "previewTitle": { "message": "时间预览" },
+  "previewDate": { "message": "本地日期和时间" },
+  "previewZone": {
+    "message": "时区：$ZONE$（$OFFSET$）",
+    "placeholders": { "zone": { "content": "$1" }, "offset": { "content": "$2" } }
+  },
+  "previewNow": { "message": "现在" },
+  "previewExpiry": { "message": "临时主页到期时" },
+  "previewDraft": { "message": "预览未保存的更改" },
+  "previewInvalidDraft": { "message": "请修正地址或每周时段后预览此草稿。" },
+  "repeatedLocalTime": { "message": "该本地时间会出现两次，将使用第一次。" },
+  "invalidDate": { "message": "请选择有效的本地日期和时间。如果时钟调整跳过了此时刻，请另选一个时间。" },
+  "invalidTemporaryDate": { "message": "请选择晚于当前时刻的有效本地日期和时间。" },
+  "sourceBase": { "message": "基础主页" },
+  "sourceSchedule": {
+    "message": "时段「$NAME$」· $TIMES$",
+    "placeholders": { "name": { "content": "$1" }, "times": { "content": "$2" } }
+  },
+  "sourceTemporary": { "message": "临时主页" },
+  "currentTemporary": {
+    "message": "临时主页生效至$DATE$，届时打开 $URL$。",
+    "placeholders": { "date": { "content": "$1" }, "url": { "content": "$2" } }
+  },
+  "temporaryEndHint": {
+    "message": "现在启用将于$DATE$结束。",
+    "placeholders": { "date": { "content": "$1" } }
+  },
+  "temporaryStarted": { "message": "已启用临时主页。" },
+  "temporaryEnded": { "message": "已结束临时主页。" },
+  "temporaryChanged": { "message": "临时主页已在另一设置页更改。请核对当前主页后再试。" },
+  "scheduleConflict": { "message": "另一设置页已保存修改。请核对其排程后再应用草稿。" },
+  "savedSchedule": { "message": "查看已保存的排程" },
+  "noSavedRules": { "message": "没有每周时段" },
+  "savedRuleSummary": {
+    "message": "$NAME$ · $DAYS$ · $TIMES$ · $URL$ · $STATE$",
+    "placeholders": { "name": { "content": "$1" }, "days": { "content": "$2" }, "times": { "content": "$3" }, "url": { "content": "$4" }, "state": { "content": "$5" } }
+  },
+  "useSavedSchedule": { "message": "载入已保存的排程" },
+  "keepScheduleDraft": { "message": "保留我的草稿" },
+  "warnInvalidSchedule": { "message": "已跳过损坏或重叠的每周时段。请核对其余时段并保存排程以修复。" },
+  "warnInvalidTemporary": { "message": "已保存的临时主页无效。启用新的临时主页即可替换。" }
 }

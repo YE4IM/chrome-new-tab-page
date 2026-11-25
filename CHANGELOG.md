@@ -4,6 +4,34 @@ Each version lists changes in English and Simplified Chinese.
 
 每个版本均提供英文和简体中文的变更记录。
 
+## [2.3.0] - 2026-11-25
+
+Open a different homepage during scheduled hours or switch to a temporary destination. Options shows which site opens now and at a time you choose.
+
+### Added
+
+- Set a temporary homepage for 30 minutes, one hour, or a specified local date and time. End it early from Options or let the current schedule take over on expiry.
+- Add weekly rules in the device’s local time. Rules can span midnight, and Options identifies overlaps between enabled rules before saving.
+- Preview a selected time or the temporary homepage’s expiry with the current draft. Actual new tabs use saved settings.
+
+### Changed
+
+- Resolve the destination when each new tab opens, including the first new tab after Chrome restarts. Existing homepage addresses now serve as the base homepage. Pending migrations from legacy sync can still retry.
+- When another options tab saves a schedule, keep the unsaved draft and show the saved schedule for review.
+
+每周可按设定的时段打开不同主页，也可临时切换到指定网站。选项页可以查看当前和指定时刻的跳转目标。
+
+### 新增功能
+
+- 临时主页可启用 30 分钟、1 小时或持续至指定的本地日期和时间。在选项页可提前结束，到期后按当时的排程跳转。
+- 按设备当地时间添加每周规则。规则可以跨午夜，选项页在保存前会指出启用规则的重叠时段。
+- 可用当前草稿预览指定时刻或临时主页到期时的目标。实际打开新标签时使用已保存的设置。
+
+### 优化与改进
+
+- 每次打开新标签时重新判断目标，包括 Chrome 重启后的首次打开。已有地址会成为基础主页，尚未完成的旧版同步迁移仍可重试。
+- 另一选项页保存排程时，当前页保留未保存的草稿，并显示已保存的排程供核对。
+
 ## [2.2.2] - 2026-11-25
 
 ### Changed
@@ -86,6 +114,7 @@ The first release lets Chrome open a homepage of your choice in every new tab. T
 - 选项页和恢复页支持英文和简体中文，跟随浏览器语言，其他语言使用英文。
 - 扩展仅申请 `storage` 权限，网站图标从本地加载。
 
+[2.3.0]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/YE4IM/chrome-new-tab-page/releases/tag/v2.2.0

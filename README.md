@@ -1,73 +1,66 @@
-<a href="https://opc.fish"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature-web-dark.svg"><img src="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature.svg" alt="OPC.FISH Project" width="720"></picture></a>
+<a href="https://opc.fish" title="OPC.FISH Project."><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature-web-dark.svg"><img src="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature.svg" alt="OPC.FISH Project" width="720"></picture></a>
 
 # Homepage New Tab
 
 [**English**](./README.md) | [中文](./README-zh-CN.md)
 
-A Chrome extension that opens a website of your choice in every new tab.
+A Chrome extension that opens a website of your choice whenever you open a new tab.
 
 [Go to installation](#installation)
 
-<img src="./docs/screenshots/options-2.2.2.png" alt="Homepage settings with Google selected and https://www.google.com/ filled in" width="540">
+<img src="./docs/screenshots/options-2.3.0-en.png" alt="Homepage settings showing a temporary meeting page, a weekly work schedule, and the destination at expiry" width="360">
 
 ## Contents
 
-[Overview](#overview) · [Requirements](#requirements) · [Installation](#installation) · [Quick Start](#quick-start) · [Features](#features) · [Usage](#usage) · [Troubleshooting](#troubleshooting) · [Testing](#testing) · [Changelog](#changelog) · [License](#license)
+[Overview](#overview) · [Requirements](#requirements) · [Installation](#installation) · [Quick Start](#quick-start) · [Usage](#usage) · [Troubleshooting](#troubleshooting) · [Testing](#testing) · [Changelog](#changelog) · [License](#license)
 
 ## Overview
 
-Use your search engine, work dashboard, or local service as the starting point for new tabs. The default destination is `https://kagi.com/`.
+Start new tabs at your search engine, work dashboard, or local service. Set weekly hours for a different destination or switch to a meeting page temporarily.
 
 ## Requirements
 
 - Google Chrome with support for Manifest V3 and loading unpacked extensions.
-- Git to clone the repository.
+- Node.js to run the tests.
 
 ## Installation
 
-1. Clone the repository.
-
-   ```bash
-   git clone https://github.com/YE4IM/chrome-new-tab-page.git
-   ```
-
+1. Open the [latest GitHub Release](https://github.com/YE4IM/chrome-new-tab-page/releases/latest), download **Source code (zip)** from **Assets**, and extract it.
 2. Open `chrome://extensions` and enable **Developer mode**.
-3. Click **Load unpacked** and select the `chrome-new-tab-page` directory containing `manifest.json`.
+3. Select **Load unpacked** and choose the extracted folder containing `manifest.json`.
+
+To update an existing unpacked installation, copy the extracted extension files into the existing extension directory. Then open `chrome://extensions` and click **Reload** on the extension. Your saved homepage becomes the base homepage.
 
 ## Quick Start
 
-Open a new tab after installation. With the default settings, it opens `https://kagi.com/`.
-
-## Features
-
-- Opens the saved homepage as the new tab loads, using a local copy of the address to start the redirect early.
-- Stores your homepage on the current device.
-- Uses only the `storage` permission. The extension loads its icons locally and connects to the destination through normal browser navigation.
-- Shows the settings and recovery pages in English or Simplified Chinese based on the browser language, with English as the fallback.
+Open a new tab. With the default settings, Chrome opens `https://kagi.com/`. To use another site, open the extension’s **Options**, enter its address under **Base homepage URL**, and click **Save schedule**. The next new tab opens that address.
 
 ## Usage
 
-1. Open the extension's **Options** from its toolbar menu.
-2. Choose Kagi, Google, Bing, or DuckDuckGo, or enter your own HTTP or HTTPS address. If you omit the scheme, the extension uses HTTPS. For a local HTTP service, enter the full address, such as `http://localhost:3000/`.
-3. Click **Save settings** and open a new tab to check the destination.
+| To | In Options |
+| --- | --- |
+| Set a base homepage | Choose Kagi, Google, Bing, or DuckDuckGo, or enter an HTTP or HTTPS address. The extension assumes HTTPS if you omit the scheme. Enter the full address for a local HTTP service, such as `http://localhost:3000/`. |
+| Schedule a different homepage | Under **Weekly schedule**, add a name, starting days, hours, and a destination. The start is inclusive and the end is exclusive. A Friday rule from 22:00 to 02:00 runs into Saturday. Adjust overlapping enabled rules before saving. |
+| Switch temporarily | Enter a destination under **Temporary homepage** and enable it for 30 minutes, one hour, or until a date and time you choose. Select **End early** to apply the current schedule to the next new tab. |
+| Check a destination | **Current homepage** shows what opens now. **Time preview** lets you check a local date and time or jump to the temporary homepage’s expiry. The preview includes your draft. New tabs use the saved schedule. |
 
-To restore Kagi, choose **Restore default URL** and save.
+A new tab checks the temporary homepage first, then the weekly schedule, then the base homepage. Weekly rules follow the device’s local time. A temporary homepage keeps the expiry set when you enabled it.
 
-To update, replace the files in the same directory and click **Reload** for the extension on `chrome://extensions`. When upgrading to 2.2.2 with homepage sync previously enabled, the extension copies the last synced homepage available to Chrome into local settings. If Chrome cannot read the synced address, the extension opens the local homepage and retries the migration the next time it loads settings. Saving an address in Options uses that address immediately.
+Homepage settings are stored on this device. The extension requests only the `storage` permission. Options and recovery are available in English and Simplified Chinese, with English as the fallback.
 
 ## Troubleshooting
 
-- If the new tab stays on the recovery page, use its homepage link, open the settings, or retry the redirect.
+If an automatic redirect stalls, use the recovery page to open the homepage manually, open Options, or retry.
 
 ## Testing
 
-Run the unit tests with Node.js from the repository root. They cover URL validation, settings migration and storage, the redirect cache, and recovery links.
+Run the tests from the repository root.
 
 ```bash
 node --test
 ```
 
-See the [browser test report](./docs/实机测试报告.md) for the earlier manual checks and screenshots.
+See the [browser test report](./docs/实机测试报告.md) for the Chrome upgrade and restart checks.
 
 ## Changelog
 
