@@ -67,6 +67,25 @@ test('旧版同步关闭或非严格 true：使用本机地址，只访问本机
   }
 });
 
+test('本机读取只在镜像缺失或不一致时回写，之后跳过相同地址', async () => {
+  const homepage = 'https://local.example/';
+  for (const cached of [undefined, homepage, 'https://old.example/', 'https://local.example']) {
+    const mirror = new Map(cached === undefined ? [] : [['localHomepage', cached]]);
+    const { settings, localStorage } = setup({ local: { homepage }, mirror });
+    const { setItem } = localStorage;
+    const writes = [];
+    localStorage.setItem = (key, value) => {
+      writes.push([key, value]);
+      setItem(key, value);
+    };
+
+    await settings.loadSettings();
+    await settings.loadSettings();
+    assert.deepEqual(writes, cached === homepage ? [] : [['localHomepage', homepage]]);
+    assert.equal(mirror.get('localHomepage'), homepage);
+  }
+});
+
 test('旧版同步开启：一次迁移生效地址，后续读取和保存都只访问本机', async () => {
   const { settings, calls, local, sync, mirror } = setup({
     local: { homepage: 'local.example', syncEnabled: true },

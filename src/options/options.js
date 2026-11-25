@@ -31,12 +31,21 @@
   const t = (key, subs) => chrome.i18n.getMessage(key, subs) || '';
 
   let savedSettings = null;
+  let draft;
+  let activeChip;
+  let logoKey;
   let saving = false;
   let btnRevertTimer;
 
-  function isDirty() {
-    if (!savedSettings) return false;
-    return savedSettings.needsRepair || (normalizeHomepage(input.value) || input.value.trim()) !== savedSettings.homepage;
+  function getDraftState() {
+    const value = input.value;
+    if (draft?.value !== value) {
+      const url = normalizeHomepage(value);
+      draft = { value, url, comparisonValue: url || value.trim() };
+    }
+    const hasEdits = Boolean(savedSettings && draft.comparisonValue !== savedSettings.homepage);
+    // 损坏的地址可直接保存默认值来修复，即使用户没有编辑过输入框。
+    return { url: draft.url, hasEdits, canSave: hasEdits || Boolean(savedSettings?.needsRepair) };
   }
 
   function showStatus(text, kind = '') {
@@ -51,15 +60,16 @@
   }
 
   // 预设使用随扩展打包的品牌图标；自定义图标在本机生成，不请求外部服务。
-  function updateLogo(url) {
-    const preset = presetChips.find((chip) => chip.dataset.url === url);
+  function updateLogo(url, preset) {
+    const host = !preset && url ? new URL(url).hostname.replace(/^www\./, '') : '';
+    const key = preset || host;
+    if (key === logoKey) return;
+    logoKey = key;
     if (preset) {
       logoImg.src = preset.dataset.icon;
       logoImg.alt = t('logoPresetAlt', [preset.textContent.trim()]);
       return;
     }
-    let host = '';
-    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { /* 无效输入使用占位图标 */ }
     const letter = (host[0] || '?').toUpperCase().replace(/[&<>"']/g, '');
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="14" fill="#6366f1"/><text x="32" y="43" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle">${letter}</text></svg>`;
     logoImg.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -67,15 +77,20 @@
   }
 
   function updateDraft() {
-    const url = normalizeHomepage(input.value);
+    const state = getDraftState();
+    const { url, canSave } = state;
     const matched = presetChips.find((chip) => chip.dataset.url === url);
-    [...presetChips, customChip].forEach((chip) => {
-      const active = chip === (matched || customChip);
-      chip.classList.toggle('active', active);
-      chip.setAttribute('aria-pressed', String(active));
-    });
-    saveBtn.disabled = saving || !isDirty();
-    updateLogo(url);
+    const nextChip = matched || customChip;
+    if (nextChip !== activeChip) {
+      activeChip?.classList.remove('active');
+      activeChip?.setAttribute('aria-pressed', 'false');
+      nextChip.classList.add('active');
+      nextChip.setAttribute('aria-pressed', 'true');
+      activeChip = nextChip;
+    }
+    saveBtn.disabled = saving || !canSave;
+    updateLogo(url, matched);
+    return state;
   }
 
   function clearSavedFeedback() {
@@ -87,8 +102,13 @@
   function editDraft() {
     clearSavedFeedback();
     showInputError(false);
-    updateDraft();
-    showStatus(isDirty() ? t('statusDirty') : t('statusCurrent', [savedSettings.homepage]));
+    const { canSave } = updateDraft();
+    showStatus(canSave ? t('statusDirty') : t('statusCurrent', [savedSettings.homepage]));
+  }
+
+  function showSettingsStatus(settings) {
+    // settings.warning 是 i18n 键名（settings.js 产出），本地化后展示。
+    showStatus(settings.warning ? t(settings.warning) : t('statusCurrent', [settings.homepage]), settings.warning ? 'error' : '');
   }
 
   function applySettings(settings) {
@@ -99,8 +119,7 @@
     showInputError(false);
     clearSavedFeedback();
     updateDraft();
-    // settings.warning 是 i18n 键名（settings.js 产出），本地化后展示。
-    showStatus(settings.warning ? t(settings.warning) : t('statusCurrent', [settings.homepage]), settings.warning ? 'error' : '');
+    showSettingsStatus(settings);
   }
 
   async function initialize() {
@@ -117,8 +136,9 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (saving || !savedSettings || !isDirty()) return;
-    const homepage = normalizeHomepage(input.value);
+    if (saving || !savedSettings) return;
+    const { url: homepage, canSave } = getDraftState();
+    if (!canSave) return;
     if (!homepage) {
       showInputError(true);
       input.focus();
@@ -167,10 +187,11 @@
     loadSettings().then((settings) => {
       if (saving || (settings.homepage === savedSettings.homepage && settings.needsRepair === savedSettings.needsRepair)) return;
       // 读取期间开始编辑的草稿也保留，并用新的已保存设置判断是否还有改动。
-      if (isDirty()) {
+      if (getDraftState().hasEdits) {
         savedSettings = settings;
-        updateDraft();
-        showStatus(isDirty() ? t('statusOtherPageUpdate') : t('statusCurrent', [settings.homepage]));
+        const { hasEdits } = updateDraft();
+        if (hasEdits) showStatus(t('statusOtherPageUpdate'));
+        else showSettingsStatus(settings);
       } else {
         applySettings(settings);
       }

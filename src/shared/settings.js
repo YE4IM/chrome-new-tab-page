@@ -16,6 +16,13 @@
     }
   }
 
+  function refreshHomepageMirror(homepage) {
+    try {
+      if (localStorage.getItem(HOMEPAGE_MIRROR_KEY) === homepage) return;
+    } catch { /* 读取失败时仍尝试回写。 */ }
+    saveHomepageMirror(homepage);
+  }
+
   function readHomepageMirror() {
     try {
       const cached = localStorage.getItem(HOMEPAGE_MIRROR_KEY);
@@ -84,7 +91,7 @@
       const local = await storageCall('local', 'get', ['homepage', 'syncEnabled']);
       const settings = localSettings(local.homepage);
       if (local.syncEnabled !== true) {
-        saveHomepageMirror(settings.homepage);
+        refreshHomepageMirror(settings.homepage);
         return settings;
       }
 
