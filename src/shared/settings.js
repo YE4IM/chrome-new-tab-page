@@ -1,13 +1,11 @@
-/* 设置页和新标签页共用的网址校验、存储及同步逻辑。 */
+/* 设置页和新标签页共用的网址校验及存储逻辑。 */
 (function (root) {
   'use strict';
 
   const DEFAULT_HOMEPAGE = 'https://kagi.com/';
 
-  // 内联跳转镜像：newtab.html 的 head 内联脚本没有异步存储往返可用（导航会先于 await 完成），
-  // 只能同步读取。保存成功后把已生效的主页镜像进扩展页 localStorage（同源、同步 API）供其零延迟读取。
-  // localStorage 受配额/隐私模式限制可能抛异常：镜像只是缓存，失败不影响 chrome.storage 真相。
-  const HOMEPAGE_MIRROR_KEY = 'homepage';
+  // 旧版使用 homepage 缓存。新键只在本机设置确认后写入，避免升级后首次跳到旧地址。
+  const HOMEPAGE_MIRROR_KEY = 'localHomepage';
 
   function saveHomepageMirror(homepage) {
     try {
@@ -18,8 +16,6 @@
     }
   }
 
-  // 读取侧校验与 normalizeHomepage 同规则（镜像只应由 saveSettings 写入合法值）。
-  // newtab.html 内联脚本自带此逻辑的最小副本：defer 脚本晚于内联脚本执行，无法复用本函数。
   function readHomepageMirror() {
     try {
       const cached = localStorage.getItem(HOMEPAGE_MIRROR_KEY);
@@ -65,62 +61,56 @@
     });
   }
 
-  async function loadSettings() {
-    // 并行读取 local+sync；未启用同步时丢弃 sync 结果，省一次串行往返。
-    const [local, synced] = await Promise.all([
-      storageCall('local', 'get', ['homepage', 'syncEnabled']),
-      storageCall('sync', 'get', ['homepage']).catch(() => null),
-    ]);
-    const cachedHomepage = normalizeHomepage(local.homepage);
-    // warning 是 i18n 键名（_locales/*/messages.json），由 UI 层本地化展示；空串表示无警告。
-    const settings = {
-      homepage: cachedHomepage || DEFAULT_HOMEPAGE,
-      syncEnabled: local.syncEnabled === true,
-      needsRepair: local.homepage !== undefined && !cachedHomepage,
-      warning: local.homepage !== undefined && !cachedHomepage ? 'warnInvalidSaved' : '',
-    };
-    if (settings.syncEnabled) {
-      if (synced) {
-        const homepage = normalizeHomepage(synced.homepage);
-        if (homepage) {
-          settings.homepage = homepage;
-          settings.warning = '';
-          settings.needsRepair = false;
-        } else if (synced.homepage !== undefined) {
-          settings.needsRepair = true;
-          settings.warning = 'warnInvalidSync';
-        }
-      } else {
-        settings.warning = 'warnSyncReadFail';
-      }
-    }
-    return settings;
+  function localSettings(rawHomepage) {
+    const homepage = normalizeHomepage(rawHomepage);
+    const needsRepair = rawHomepage !== undefined && !homepage;
+    return { homepage: homepage || DEFAULT_HOMEPAGE, needsRepair, warning: needsRepair ? 'warnInvalidSaved' : '' };
   }
 
-  async function saveSettings({ homepage, syncEnabled }) {
+  async function persistHomepage(homepage, needsRepair = false) {
+    // 先清空缓存，避免写入本机成功、刷新缓存失败时仍跳到旧地址。
+    try {
+      localStorage.removeItem(HOMEPAGE_MIRROR_KEY);
+    } catch { /* 无法使用缓存时，仍保存本机设置。 */ }
+    // 与主页一次写入，保证迁移完成标志和迁移后的地址同时生效。
+    const update = needsRepair ? { syncEnabled: false } : { homepage, syncEnabled: false };
+    await storageCall('local', 'set', update);
+    saveHomepageMirror(homepage);
+  }
+
+  async function loadSettings(onLocalHomepage) {
+    // 扩展页面共享同一把锁，防止多个标签页重复迁移或让迁移覆盖用户刚保存的地址。
+    return navigator.locks.request('homepage-settings', async () => {
+      const local = await storageCall('local', 'get', ['homepage', 'syncEnabled']);
+      const settings = localSettings(local.homepage);
+      if (local.syncEnabled !== true) {
+        saveHomepageMirror(settings.homepage);
+        return settings;
+      }
+
+      onLocalHomepage?.(settings.homepage);
+      let synced;
+      try {
+        synced = await storageCall('sync', 'get', ['homepage']);
+      } catch {
+        // 保留迁移标志，且暂用地址不进入快速跳转缓存。
+        return settings;
+      }
+      const syncedHomepage = normalizeHomepage(synced.homepage);
+      const migrated = syncedHomepage ? localSettings(syncedHomepage) : settings;
+      try {
+        // 缺少有效地址时保留原值，让已有的本机地址修复提示继续工作。
+        await persistHomepage(migrated.homepage, migrated.needsRepair);
+      } catch { /* 当前页仍可使用已取得的有效主页，下次重新迁移。 */ }
+      return migrated;
+    });
+  }
+
+  async function saveSettings({ homepage }) {
     const normalized = normalizeHomepage(homepage);
     if (!normalized) throw new Error('Invalid HTTP or HTTPS URL');
-    const enableSync = syncEnabled === true;
-    const localValue = { homepage: normalized, syncEnabled: enableSync };
-    // 先写本机（含 syncEnabled 标志）：local 失败时 sync 尚未写入，两端保持一致旧值。
-    await storageCall('local', 'set', localValue);
-    // local 已生效，同步刷新内联跳转镜像；镜像失败不阻断保存（newtab.js 异步修正仍兜底）。
-    saveHomepageMirror(normalized);
-    if (enableSync) {
-      try {
-        await storageCall('sync', 'set', { homepage: normalized });
-      } catch (error) {
-        // sync 写入失败：回退本机 syncEnabled 标志，避免留下"远端旧值却标记已同步"的假状态；
-        // 新地址已在本机生效，重试保存即可再次开启同步。回退本身失败时以原始错误为准。
-        try {
-          await storageCall('local', 'set', { homepage: normalized, syncEnabled: false });
-        } catch {
-          /* 回退尽力而为 */
-        }
-        throw error;
-      }
-    }
-    return { homepage: normalized, syncEnabled: enableSync, needsRepair: false, warning: '' };
+    await navigator.locks.request('homepage-settings', () => persistHomepage(normalized));
+    return localSettings(normalized);
   }
 
   const api = { DEFAULT_HOMEPAGE, normalizeHomepage, loadSettings, saveSettings, saveHomepageMirror, readHomepageMirror };

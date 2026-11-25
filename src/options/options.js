@@ -22,7 +22,6 @@
   const saveBtn = document.getElementById('save');
   const resetBtn = document.getElementById('reset');
   const retryBtn = document.getElementById('retry');
-  const syncInput = document.getElementById('syncEnabled');
   const statusEl = document.getElementById('status');
   const logoImg = document.getElementById('siteLogo');
   const customChip = document.getElementById('customChip');
@@ -37,8 +36,7 @@
 
   function isDirty() {
     if (!savedSettings) return false;
-    return savedSettings.needsRepair || (normalizeHomepage(input.value) || input.value.trim()) !== savedSettings.homepage
-      || syncInput.checked !== savedSettings.syncEnabled;
+    return savedSettings.needsRepair || (normalizeHomepage(input.value) || input.value.trim()) !== savedSettings.homepage;
   }
 
   function showStatus(text, kind = '') {
@@ -96,7 +94,6 @@
   function applySettings(settings) {
     savedSettings = settings;
     input.value = settings.homepage;
-    syncInput.checked = settings.syncEnabled;
     fields.disabled = false;
     retryBtn.hidden = true;
     showInputError(false);
@@ -134,13 +131,12 @@
     saveBtn.textContent = t('saveBtnSaving');
     showStatus(t('statusSaving'));
     try {
-      applySettings(await saveSettings({ homepage, syncEnabled: syncInput.checked }));
+      applySettings(await saveSettings({ homepage }));
       showStatus(t('statusSaved', [homepage]), 'success');
       saveBtn.textContent = t('saveBtnSaved');
       saveBtn.classList.add('saved');
       btnRevertTimer = setTimeout(clearSavedFeedback, 2000);
     } catch (error) {
-      // 附上具体原因（如 sync 配额/频率/网络错误），不再统一掩盖；message 为英文时不影响中英文案主体。
       clearSavedFeedback();
       showStatus(t('statusSaveFail') + (error?.message ? ' · ' + error.message : ''), 'error');
     } finally {
@@ -152,7 +148,6 @@
   });
 
   input.addEventListener('input', editDraft);
-  syncInput.addEventListener('change', editDraft);
   resetBtn.addEventListener('click', () => {
     input.value = DEFAULT_HOMEPAGE;
     editDraft();
@@ -168,18 +163,20 @@
   retryBtn.addEventListener('click', initialize);
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (saving || !savedSettings) return;
-    const relevant = area === 'local' && (changes.homepage || changes.syncEnabled)
-      || area === 'sync' && savedSettings.syncEnabled && changes.homepage;
-    if (!relevant) return;
-    if (isDirty()) {
-      showStatus(t('statusRemoteUpdate'));
-      return;
-    }
-    // 异步读取期间若用户开始编辑，不覆盖刚输入的草稿。
+    if (area !== 'local' || !changes.homepage || !savedSettings) return;
     loadSettings().then((settings) => {
-      if (!saving && !isDirty()) applySettings(settings);
-    }).catch(() => showStatus(t('statusRemoteReadFail'), 'error'));
+      if (saving || (settings.homepage === savedSettings.homepage && settings.needsRepair === savedSettings.needsRepair)) return;
+      // 读取期间开始编辑的草稿也保留，并用新的已保存设置判断是否还有改动。
+      if (isDirty()) {
+        savedSettings = settings;
+        updateDraft();
+        showStatus(isDirty() ? t('statusOtherPageUpdate') : t('statusCurrent', [settings.homepage]));
+      } else {
+        applySettings(settings);
+      }
+    }).catch(() => {
+      if (!saving) showStatus(t('statusRefreshFail'), 'error');
+    });
   });
 
   initialize();

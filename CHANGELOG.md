@@ -4,16 +4,28 @@ Each version lists changes in English and Simplified Chinese.
 
 每个版本均提供英文和简体中文的变更记录。
 
-## [Unreleased]
+## [2.2.2] - 2026-11-25
 
-The bilingual READMEs now put installation and the first new-tab launch near the top.
+### Changed
+
+- Homepage settings are stored on the current device. If homepage sync was enabled, the extension checks the previous synced address before the first redirect and saves it locally. If the sync read fails, it uses the local homepage and retries on a later load.
+
+### Fixed
+
+- The recovery page’s manual link opens the configured homepage when it is available.
 
 ### Maintenance & Dependencies
 
 - Updated the installation instructions to use the current repository URL and renamed the Simplified Chinese introduction to `README-zh-CN.md`.
 - Moved the [browser test report](./docs/实机测试报告.md) and its [screenshots](./docs/screenshots/) under `docs/`.
 
-中英 README 将安装步骤和首次打开新标签页的说明放到了前面。
+### 优化与改进
+
+- 主页设置仅保存在当前设备。旧版启用了同步时，扩展会在首次跳转前查找原先同步的主页并迁入本机。如果同步读取失败，暂时使用本机主页，并在后续读取设置时重试。
+
+### 问题修复
+
+- 跳转未完成或失败时，恢复页的手动链接会打开已读取到的主页。
 
 ### 维护与依赖更新
 
@@ -74,5 +86,6 @@ The first release lets Chrome open a homepage of your choice in every new tab. T
 - 选项页和恢复页支持英文和简体中文，跟随浏览器语言，其他语言使用英文。
 - 扩展仅申请 `storage` 权限，网站图标从本地加载。
 
+[2.2.2]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/YE4IM/chrome-new-tab-page/releases/tag/v2.2.0

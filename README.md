@@ -8,7 +8,7 @@ A Chrome extension that opens a website of your choice in every new tab.
 
 [Go to installation](#installation)
 
-<img src="./docs/screenshots/05-preset-google.png" alt="Homepage settings with Google selected and https://www.google.com/ filled in" width="540">
+<img src="./docs/screenshots/options-2.2.2.png" alt="Homepage settings with Google selected and https://www.google.com/ filled in" width="540">
 
 ## Contents
 
@@ -41,7 +41,7 @@ Open a new tab after installation. With the default settings, it opens `https://
 ## Features
 
 - Opens the saved homepage as the new tab loads, using a local copy of the address to start the redirect early.
-- Keeps settings on the current device by default and lets you sync the homepage through Chrome when you opt in.
+- Stores your homepage on the current device.
 - Uses only the `storage` permission. The extension loads its icons locally and connects to the destination through normal browser navigation.
 - Shows the settings and recovery pages in English or Simplified Chinese based on the browser language, with English as the fallback.
 
@@ -51,18 +51,17 @@ Open a new tab after installation. With the default settings, it opens `https://
 2. Choose Kagi, Google, Bing, or DuckDuckGo, or enter your own HTTP or HTTPS address. If you omit the scheme, the extension uses HTTPS. For a local HTTP service, enter the full address, such as `http://localhost:3000/`.
 3. Click **Save settings** and open a new tab to check the destination.
 
-To sync the URL, enable **Sync homepage across devices** and save on each device that should participate. Chrome extension sync must be enabled. To restore Kagi, choose **Restore default URL** and save.
+To restore Kagi, choose **Restore default URL** and save.
 
-To update, replace the files in the same directory and click **Reload** for the extension on `chrome://extensions`. This keeps your existing settings.
+To update, replace the files in the same directory and click **Reload** for the extension on `chrome://extensions`. When upgrading to 2.2.2 with homepage sync previously enabled, the extension copies the last synced homepage available to Chrome into local settings. If Chrome cannot read the synced address, the extension opens the local homepage and retries the migration the next time it loads settings. Saving an address in Options uses that address immediately.
 
 ## Troubleshooting
 
 - If the new tab stays on the recovery page, use its homepage link, open the settings, or retry the redirect.
-- If Chrome sync fails during a save, the new address is already saved on this device. Check Chrome sync and try saving again.
 
 ## Testing
 
-Run the unit tests with Node.js from the repository root. They cover URL validation, settings reads and writes, and the redirect cache.
+Run the unit tests with Node.js from the repository root. They cover URL validation, settings migration and storage, the redirect cache, and recovery links.
 
 ```bash
 node --test

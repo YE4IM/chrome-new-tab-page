@@ -154,12 +154,9 @@
         #hp::placeholder { color: var(--text-tertiary); }
         fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
         fieldset:disabled { opacity: 0.65; }
-        .field-help, .sync-help { font-size: 12px; color: var(--text-secondary); margin: 8px 0 0; }
+        .field-help { font-size: 12px; color: var(--text-secondary); margin: 8px 0 0; }
         .error-msg { color: var(--danger); font-size: 12.5px; margin-top: 7px; }
-        .sync-setting { margin-top: 22px; }
-        .sync-label { display: flex; align-items: center; gap: 9px; cursor: pointer; }
-        #syncEnabled { width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
-        button:focus-visible, a:focus-visible, input[type="checkbox"]:focus-visible {
+        button:focus-visible, a:focus-visible {
             outline: 3px solid var(--accent); outline-offset: 4px;
         }
         @media (prefers-reduced-motion: reduce) {
@@ -204,7 +201,7 @@
         .actions {
             display: flex;
             gap: 12px;
-            margin-top: 26px;
+            margin-top: 24px;
         }
         button.btn {
             font: inherit;
@@ -306,14 +303,6 @@
                             <span class="dot" style="background:#9aa0ae"></span><span data-i18n="customChip">其他地址</span>
                         </button>
                     </div>
-                </div>
-
-                <div class="sync-setting">
-                    <label class="sync-label" for="syncEnabled">
-                        <input id="syncEnabled" type="checkbox" aria-describedby="syncHelp">
-                        <span data-i18n="syncLabel">跨设备同步主页</span>
-                    </label>
-                    <p class="sync-help" id="syncHelp" data-i18n="syncHelp">默认仅保存在本机。启用并保存后，会把当前地址同步到其他已启用此选项的设备；需要在 Chrome 中开启扩展程序同步。关闭只影响本机。</p>
                 </div>
 
                 <div class="actions">
