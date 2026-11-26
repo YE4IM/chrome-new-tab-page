@@ -1,4 +1,6 @@
-<a href="https://opc.fish" title="OPC.FISH Project."><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature-web-dark.svg"><img src="https://raw.githubusercontent.com/YE4IM/readme/main/project%20readme/assets/opc-fish-project-signature.svg" alt="OPC.FISH Project" width="720"></picture></a>
+<p align="center">
+<a href="https://opc.fish" title="OPC.FISH Project."><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/YE4IM/readme/main/project/assets/opc-fish-project-signature-dark.svg"><img src="https://raw.githubusercontent.com/YE4IM/readme/main/project/assets/opc-fish-project-signature.svg" alt="OPC.FISH Project" width="720"></picture></a>
+</p>
 
 # Homepage New Tab
 
@@ -6,9 +8,11 @@
 
 A Chrome extension that opens a website of your choice whenever you open a new tab.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-2563EB?style=flat&labelColor=1F2A37)](./LICENSE) [![Version: 2.3.1](https://img.shields.io/badge/Version-2.3.1-D9381E?style=flat&labelColor=1F2A37)](./manifest.json) [![Language: JavaScript](https://img.shields.io/badge/Language-JavaScript-0E8274?style=flat&labelColor=1F2A37)](./src) [![Platform: Browser Extension](https://img.shields.io/badge/Platform-Browser%20Extension-C6286B?style=flat&labelColor=1F2A37)](./manifest.json)
+
 [Go to installation](#installation)
 
-<img src="./docs/screenshots/options-2.3.0-en.png" alt="Homepage settings showing a temporary meeting page, a weekly work schedule, and the destination at expiry" width="360">
+<img src="./docs/screenshots/options-2.3.1-basic-en.png" alt="Basic homepage settings with advanced features turned off" width="720">
 
 ## Contents
 
@@ -33,9 +37,11 @@ To update an existing unpacked installation, copy the extracted extension files 
 
 ## Quick Start
 
-Open a new tab. With the default settings, Chrome opens `https://kagi.com/`. To use another site, open the extension’s **Options**, enter its address under **Base homepage URL**, and click **Save schedule**. The next new tab opens that address.
+Open a new tab. With the default settings, Chrome opens `https://kagi.com/`. To use another site, open the extension’s **Options**, enter its address under **Base homepage URL**, and click **Save homepage**. With advanced features off, every new tab opens the base homepage.
 
 ## Usage
+
+Turn on **Enable advanced features** to use temporary homepages, weekly rules, and time previews. New installations start with the switch off. An upgrade from 2.3.0 turns it on if you have a saved weekly rule or a temporary homepage that is still active.
 
 | To | In Options |
 | --- | --- |
@@ -44,7 +50,9 @@ Open a new tab. With the default settings, Chrome opens `https://kagi.com/`. To 
 | Switch temporarily | Enter a destination under **Temporary homepage** and enable it for 30 minutes, one hour, or until a date and time you choose. Select **End early** to apply the current schedule to the next new tab. |
 | Check a destination | **Current homepage** shows what opens now. **Time preview** lets you check a local date and time or jump to the temporary homepage’s expiry. The preview includes your draft. New tabs use the saved schedule. |
 
-A new tab checks the temporary homepage first, then the weekly schedule, then the base homepage. Weekly rules follow the device’s local time. A temporary homepage keeps the expiry set when you enabled it.
+With advanced features on, a new tab checks the temporary homepage first, then the weekly schedule, then the base homepage. Weekly rules follow the device’s local time. Switching off takes effect on the next new tab and keeps your saved rules and the temporary homepage’s original expiry. When you switch back on, an expired temporary homepage is skipped.
+
+<img src="./docs/screenshots/options-2.3.1-advanced-en.png" alt="Advanced settings with a temporary homepage, a weekly rule, and a time preview" width="720">
 
 Homepage settings are stored on this device. The extension requests only the `storage` permission. Options and recovery are available in English and Simplified Chinese, with English as the fallback.
 
@@ -64,7 +72,7 @@ See the [browser test report](./docs/实机测试报告.md) for the Chrome upgra
 
 ## Changelog
 
-See the [bilingual changelog](./CHANGELOG.md) for version history.
+See the [changelog](./CHANGELOG.md) for version history.
 
 ## License
 

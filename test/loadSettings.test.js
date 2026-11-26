@@ -5,16 +5,16 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync(require.resolve('../src/shared/settings.js'), 'utf8');
 const coreSource = fs.readFileSync(require.resolve('../src/shared/homepage.js'), 'utf8');
-const keys = ['homepage', 'syncEnabled', 'homepageSchedule', 'temporaryHomepage'];
+const keys = ['homepage', 'syncEnabled', 'homepageSchedule', 'temporaryHomepage', 'advancedEnabled'];
 const mirrorKey = 'localHomepageConfigV1';
 
 function mirrorValue(homepage) {
-  return JSON.stringify({ version: 1, homepage, rules: [], temporaryHomepage: null });
+  return JSON.stringify({ version: 2, homepage, rules: [], temporaryHomepage: null, advancedEnabled: false });
 }
 
 function state(homepage, extra = {}) {
   return {
-    homepage, rules: [], temporaryHomepage: null, revision: 0,
+    homepage, rules: [], temporaryHomepage: null, advancedEnabled: false, revision: 0,
     needsRepair: false, warning: '', scheduleNeedsRepair: false, temporaryNeedsRepair: false,
     ...extra,
   };
@@ -203,7 +203,7 @@ test('并行读取与保存：只迁移一次，用户保存的地址最终生�
 test('迁移未完成时手动保存：本机保存优先，之后跳过同步读取', async () => {
   const { settings, calls } = setup({ local: { syncEnabled: true }, sync: { homepage: 'synced.example' } });
   const result = await settings.saveSettings({ homepage: 'new-local.example' });
-  assert.deepEqual(copy(result), state('https://new-local.example/', { revision: 1 }));
+  assert.deepEqual(copy(result), state('https://new-local.example/'));
   assert.equal((await settings.loadSettings()).homepage, result.homepage);
   assert.deepEqual(calls.map(([operation]) => operation), ['local.get', 'local.set', 'local.get']);
 });
@@ -232,6 +232,47 @@ const workRule = {
   homepage: 'https://work.example/', enabled: true,
 };
 
+test('2.3.0 升级仅为已保存的规则或当前有效的临时主页自动启用高级功能', async () => {
+  const now = Date.now();
+  const temporaryHomepage = { homepage: 'https://meeting.example/', startsAt: now - 5000, expiresAt: now + 60000 };
+  const homepageSchedule = { version: 1, revision: 3, rules: [{ ...workRule, enabled: false }] };
+  for (const [raw, expected] of [
+    [{}, false],
+    [{ homepageSchedule }, true],
+    [{ temporaryHomepage }, true],
+    [{ temporaryHomepage: { ...temporaryHomepage, expiresAt: now - 1000 } }, false],
+    [{ temporaryHomepage, homepageSchedule, advancedEnabled: false }, false],
+    [{ advancedEnabled: true }, true],
+  ]) {
+    const { settings, local } = setup({ local: { homepage: 'base.example/path?q=1#hash', ...raw } });
+    assert.equal((await settings.loadSettings()).advancedEnabled, expected);
+    assert.equal(settings.readHomepageMirror().advancedEnabled, expected);
+    assert.equal(settings.readHomepageMirror().homepage, 'https://base.example/path?q=1#hash');
+    if (expected) assert.equal(local.advancedEnabled, true);
+  }
+});
+
+test('关闭后基础保存独立进行，重新开启保留原规则及临时主页时间', async () => {
+  const { settings, local } = setup({ local: {
+    homepage: 'https://base.example/',
+    homepageSchedule: { version: 1, revision: 4, rules: [workRule] },
+  } });
+  await settings.loadSettings();
+  const { temporaryHomepage } = await settings.saveTemporaryHomepage({ homepage: 'meeting.example', durationMs: 60000 });
+  await settings.saveAdvancedEnabled(false);
+  await assert.rejects(settings.saveSettings({ homepage: 'stale.example', rules: [] }), { code: 'ADVANCED_DISABLED' });
+  await assert.rejects(settings.clearTemporaryHomepage(temporaryHomepage), { code: 'ADVANCED_DISABLED' });
+  await settings.saveSettings({ homepage: 'new.example', expectedHomepage: 'https://base.example/' });
+  assert.equal(settings.readHomepageMirror().advancedEnabled, false);
+  assert.equal(local.homepageSchedule.revision, 4);
+  assert.deepEqual(local.homepageSchedule.rules, [workRule]);
+  assert.deepEqual(copy(local.temporaryHomepage), copy(temporaryHomepage));
+  const reopened = await settings.saveAdvancedEnabled(true);
+  assert.deepEqual(copy(reopened.temporaryHomepage), copy(temporaryHomepage));
+  assert.equal(reopened.homepage, 'https://new.example/');
+  assert.equal(settings.readHomepageMirror().advancedEnabled, true);
+});
+
 test('升级后忽略旧缓存，并按原样保留本机主页的路径、查询参数及锚点', async () => {
   const homepage = 'https://local.example/folder/tab?q=keep%20spaces#section';
   const { settings } = setup({
@@ -252,11 +293,11 @@ test('跳过单条损坏规则和临时主页，并将其余规则放入缓存',
     },
   });
   const expected = state('https://local.example/', {
-    revision: 2, rules: [workRule], scheduleNeedsRepair: true, temporaryNeedsRepair: true,
+    revision: 2, rules: [workRule], advancedEnabled: true, scheduleNeedsRepair: true, temporaryNeedsRepair: true,
   });
   assert.deepEqual(copy(await settings.loadSettings()), expected);
   assert.deepEqual(copy(settings.readHomepageMirror()), {
-    homepage: expected.homepage, rules: [workRule], temporaryHomepage: null,
+    homepage: expected.homepage, rules: [workRule], temporaryHomepage: null, advancedEnabled: true,
   });
   const repaired = await settings.saveSettings({ homepage: expected.homepage, rules: [workRule], expectedRevision: 2 });
   assert.equal(repaired.scheduleNeedsRepair, false);
@@ -266,7 +307,7 @@ test('跳过单条损坏规则和临时主页，并将其余规则放入缓存',
 
 test('并行保存排程和结束临时主页时，两项操作都保留', async () => {
   for (const scheduleFirst of [true, false]) {
-    const { settings, local } = setup();
+    const { settings, local } = setup({ local: { advancedEnabled: true } });
     const { temporaryHomepage } = await settings.saveTemporaryHomepage({ homepage: 'meeting.example', durationMs: 60000 });
     const operations = [
       () => settings.saveSettings({ homepage: 'base.example', rules: [workRule], expectedRevision: 0 }),
@@ -276,13 +317,13 @@ test('并行保存排程和结束临时主页时，两项操作都保留', async
     await Promise.all(operations.map((operation) => operation()));
     assert.equal(local.temporaryHomepage, null);
     assert.deepEqual(copy(settings.readHomepageMirror()), {
-      homepage: 'https://base.example/', rules: [workRule], temporaryHomepage: null,
+      homepage: 'https://base.example/', rules: [workRule], temporaryHomepage: null, advancedEnabled: true,
     });
   }
 });
 
 test('页面持有旧版本时拒绝覆盖排程，也拒绝提前结束替换后的临时主页', async () => {
-  const { settings, local } = setup();
+  const { settings, local } = setup({ local: { advancedEnabled: true } });
   const { revision } = await settings.loadSettings();
   await settings.saveSettings({ homepage: 'base.example', rules: [], expectedRevision: revision });
   await assert.rejects(
@@ -300,7 +341,7 @@ test('页面持有旧版本时拒绝覆盖排程，也拒绝提前结束替换�
 
 test('旧版同步迁移更改基础主页后，同一排程版本的旧草稿也需要重新核对', async () => {
   const { settings } = setup({
-    local: { homepage: 'local.example', syncEnabled: true },
+    local: { homepage: 'local.example', syncEnabled: true, advancedEnabled: true },
     sync: { homepage: 'synced.example' },
     failOnce: { 'sync.get': 'Sync read failed' },
   });
@@ -316,7 +357,7 @@ test('旧版同步迁移更改基础主页后，同一排程版本的旧草稿�
 
 test('迁移写入暂时失败后，设置页仍可显式保存基础主页和排程', async () => {
   const { settings, local } = setup({
-    local: { homepage: 'local.example', syncEnabled: true },
+    local: { homepage: 'local.example', syncEnabled: true, advancedEnabled: true },
     sync: { homepage: 'synced.example' },
     failOnce: { 'local.set': 'Storage operation failed' },
   });
@@ -330,7 +371,7 @@ test('迁移写入暂时失败后，设置页仍可显式保存基础主页和�
 
 test('临时主页独立保存，不会将失败的旧版同步迁移标记为完成', async () => {
   const { settings, local, calls } = setup({
-    local: { homepage: 'local.example', syncEnabled: true }, sync: { homepage: 'synced.example' },
+    local: { homepage: 'local.example', syncEnabled: true, advancedEnabled: true }, sync: { homepage: 'synced.example' },
   });
   const { temporaryHomepage } = await settings.saveTemporaryHomepage({ homepage: 'meeting.example', durationMs: 60000 });
   assert.equal(temporaryHomepage.expiresAt - temporaryHomepage.startsAt, 60000);
@@ -345,7 +386,7 @@ test('临时主页独立保存，不会将失败的旧版同步迁移标记为�
 });
 
 test('缓存无法删除或覆盖时阻止改写，避免下一页跳到旧地址', async () => {
-  const { settings, localStorage, local } = setup({ local: { homepage: 'base.example' } });
+  const { settings, localStorage, local } = setup({ local: { homepage: 'base.example', advancedEnabled: true } });
   await settings.loadSettings();
   const fail = () => { throw new Error('缓存不可写'); };
   localStorage.removeItem = fail;
@@ -360,7 +401,7 @@ test('缓存无法删除或覆盖时阻止改写，避免下一页跳到旧地�
 
 test('本机存储拒绝写入时，下一次读取仍可重建权威配置的缓存', async () => {
   const failOnce = {};
-  const { settings, local } = setup({ local: { homepage: 'base.example' }, failOnce });
+  const { settings, local } = setup({ local: { homepage: 'base.example', advancedEnabled: true }, failOnce });
   await settings.loadSettings();
   failOnce['local.set'] = 'Storage operation failed';
   await assert.rejects(

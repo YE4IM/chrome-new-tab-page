@@ -16,12 +16,12 @@ function installLocalStorageStub() {
 
 const mirrorKey = 'localHomepageConfigV1';
 const homepage = 'https://example.com/';
-const cached = { version: 1, homepage, rules: [], temporaryHomepage: null };
+const cached = { version: 2, homepage, rules: [], temporaryHomepage: null, advancedEnabled: false };
 
 test('readHomepageMirror 读取完整的新版配置', () => {
   const storage = installLocalStorageStub();
   storage.setItem(mirrorKey, JSON.stringify(cached));
-  assert.deepStrictEqual(settings.readHomepageMirror(), { homepage, rules: [], temporaryHomepage: null });
+  assert.deepStrictEqual(settings.readHomepageMirror(), { homepage, rules: [], temporaryHomepage: null, advancedEnabled: false });
 });
 
 test('readHomepageMirror 拒绝损坏或未知版本的配置', () => {
@@ -29,7 +29,8 @@ test('readHomepageMirror 拒绝损坏或未知版本的配置', () => {
   assert.strictEqual(settings.readHomepageMirror(), null);
   for (const value of [
     'not-json',
-    JSON.stringify({ ...cached, version: 2 }),
+    JSON.stringify({ ...cached, version: 1 }),
+    JSON.stringify({ ...cached, advancedEnabled: undefined }),
     JSON.stringify({ ...cached, homepage: 'javascript:alert(1)' }),
     JSON.stringify({ ...cached, rules: [{ homepage }] }),
     JSON.stringify({ ...cached, temporaryHomepage: { homepage, startsAt: 1, expiresAt: 0 } }),

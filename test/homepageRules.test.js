@@ -25,7 +25,7 @@ test('a temporary homepage overrides the weekly schedule from its start through 
   const temporaryHomepage = {
     homepage: meeting, startsAt: +localDate(27, 17, 30), expiresAt: +localDate(27, 18, 30),
   };
-  const config = { homepage: base, rules: [rule()], temporaryHomepage };
+  const config = { homepage: base, advancedEnabled: true, rules: [rule()], temporaryHomepage };
 
   const cases = [
     [localDate(27, 17, 29), board, 'schedule', 'work'],
@@ -45,7 +45,7 @@ test('a temporary homepage overrides the weekly schedule from its start through 
 });
 
 test('overnight schedules belong to their starting day, including across the week boundary', () => {
-  const config = { homepage: base, rules: [rule({ days: [0, 5, 6], start: '22:00', end: '02:00' })] };
+  const config = { homepage: base, advancedEnabled: true, rules: [rule({ days: [0, 5, 6], start: '22:00', end: '02:00' })] };
   for (const day of [27, 28, 29]) {
     assert.equal(resolveHomepage(config, localDate(day, 21, 59)).homepage, base);
     assert.equal(resolveHomepage(config, localDate(day, 22, 0)).homepage, board);
@@ -88,13 +88,13 @@ test('local weekly times follow timezone and DST while temporary expiration uses
   const originalTimezone = process.env.TZ;
   try {
     process.env.TZ = 'America/New_York';
-    const early = { homepage: base, rules: [rule({ days: [0], start: '01:00', end: '02:00' })] };
+    const early = { homepage: base, advancedEnabled: true, rules: [rule({ days: [0], start: '01:00', end: '02:00' })] };
     // The repeated local hour matches for both occurrences.
     assert.equal(resolveHomepage(early, new Date('2026-11-01T05:30:00Z')).homepage, board);
     assert.equal(resolveHomepage(early, new Date('2026-11-01T06:30:00Z')).homepage, board);
     assert.equal(resolveHomepage(early, new Date('2026-11-01T07:00:00Z')).homepage, base);
 
-    const gap = { homepage: base, rules: [rule({ days: [0], start: '02:00', end: '03:00' })] };
+    const gap = { homepage: base, advancedEnabled: true, rules: [rule({ days: [0], start: '02:00', end: '03:00' })] };
     assert.equal(resolveHomepage(gap, new Date('2026-03-08T06:59:59Z')).homepage, base);
     assert.equal(resolveHomepage(gap, new Date('2026-03-08T07:00:00Z')).homepage, base);
 

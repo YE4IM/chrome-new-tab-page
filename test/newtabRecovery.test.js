@@ -15,6 +15,7 @@ const temporaryHomepage = 'https://meeting.example/doc#notes';
 const friday = (hours, minutes) => new Date(2026, 10, 27, hours, minutes).getTime();
 const workweek = {
   homepage: savedHomepage,
+  advancedEnabled: true,
   rules: [{ id: 'work', name: 'Work', days: [1, 2, 3, 4, 5], start: '09:00', end: '18:00', enabled: true, homepage: scheduleHomepage }],
 };
 
@@ -136,6 +137,19 @@ test('同一份动态缓存可连续跨过工作时段和临时主页的边界',
     tab.timeOut();
     assert.equal(tab.elements.get('target').href, expected);
     assert.deepEqual(tab.navigations, [expected]);
+  }
+});
+
+test('高级功能关闭时，冷启动读取和快速缓存都跳过有效的临时主页与时段', async () => {
+  const config = {
+    ...workweek,
+    advancedEnabled: false,
+    temporaryHomepage: { homepage: temporaryHomepage, startsAt: friday(17, 30), expiresAt: friday(18, 30) },
+  };
+  for (const settings of [{ mirror: config }, { loadSettings: async () => config }]) {
+    const tab = runRedirect({ ...settings, now: () => friday(17, 45) });
+    await tab.finished;
+    assert.deepEqual(tab.navigations, [savedHomepage]);
   }
 });
 

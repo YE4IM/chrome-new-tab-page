@@ -128,7 +128,9 @@
   }
 
   // 输入是存储层或表单校验后的配置。每次根据 instant 的本地时间重新匹配。
-  function resolveHomepage({ homepage, rules = [], temporaryHomepage }, instant) {
+  function resolveHomepage({ homepage, advancedEnabled, rules = [], temporaryHomepage }, instant) {
+    const base = { homepage: homepage || DEFAULT_HOMEPAGE, source: 'base', ruleId: null };
+    if (advancedEnabled !== true) return base;
     const date = new Date(instant);
     const timestamp = date.getTime();
     if (temporaryHomepage && temporaryHomepage.startsAt <= timestamp && timestamp < temporaryHomepage.expiresAt) {
@@ -147,7 +149,7 @@
         : (rule.days.includes(day) && start <= minutes) || (rule.days.includes(previousDay) && minutes < end);
       if (matches) return { homepage: rule.homepage, source: 'schedule', ruleId: rule.id };
     }
-    return { homepage: homepage || DEFAULT_HOMEPAGE, source: 'base', ruleId: null };
+    return base;
   }
 
   const api = {

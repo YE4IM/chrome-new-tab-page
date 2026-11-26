@@ -45,7 +45,7 @@ function ruleNode() {
 
 function setup(homepage, options = {}) {
   const listeners = [];
-  let { rules = [], temporaryHomepage = null, now = Date.now(), persistedHomepage } = options;
+  let { rules = [], temporaryHomepage = null, advancedEnabled = true, now = Date.now(), persistedHomepage } = options;
   let revision = 0;
   let writeFailed = false;
   let callbackId = 0;
@@ -66,6 +66,7 @@ function setup(homepage, options = {}) {
       warning: normalized ? '' : 'warnInvalidSaved',
       rules,
       temporaryHomepage,
+      advancedEnabled,
       revision,
       persistedHomepage,
     });
@@ -79,14 +80,23 @@ function setup(homepage, options = {}) {
     async saveSettings({ homepage: nextHomepage, rules: nextRules, expectedRevision, expectedHomepage }) {
       if (writeFailed) throw new Error('storage unavailable');
       const persistedAddress = persistedHomepage ?? normalizeHomepage(homepage) ?? DEFAULT_HOMEPAGE;
-      if (revision !== expectedRevision || persistedAddress !== expectedHomepage) {
+      if ((nextRules !== undefined && revision !== expectedRevision) || persistedAddress !== expectedHomepage) {
         throw Object.assign(new Error('conflict'), { code: 'SCHEDULE_CONFLICT' });
       }
       homepage = nextHomepage;
       persistedHomepage = undefined;
-      rules = nextRules;
-      revision += 1;
-      notify('homepageSchedule');
+      if (nextRules !== undefined) {
+        rules = nextRules;
+        revision += 1;
+        notify('homepageSchedule');
+      }
+      notify('homepage');
+      return loadSettings();
+    },
+    async saveAdvancedEnabled(enabled) {
+      if (writeFailed) throw new Error('storage unavailable');
+      advancedEnabled = enabled;
+      notify('advancedEnabled');
       return loadSettings();
     },
     async saveTemporaryHomepage({ homepage, durationMs, expiresAt }) {
@@ -174,6 +184,11 @@ function setup(homepage, options = {}) {
         const field = getElementById(id);
         field.value = value;
         field.dispatch('input');
+      },
+      toggleAdvanced(enabled) {
+        const toggle = getElementById('advancedEnabled');
+        toggle.checked = enabled;
+        return toggle.dispatch('change');
       },
       click(id) { return getElementById(id).dispatch('click'); },
       submit(id = 'settingsForm') { return getElementById(id).dispatch('submit'); },
@@ -378,6 +393,60 @@ test('结束临时主页时，另一设置页保留未保存的排程', async ()
   const saved = await loadSettings();
   assert.equal(saved.rules[0].homepage, 'https://work.example/');
   assert.equal(saved.temporaryHomepage, null);
+});
+
+test('跨设置页切换时保留隐藏草稿，基础主页可独立保存且到期的临时主页不再生效', async () => {
+  const now = new Date(2026, 10, 27, 9, 30).getTime();
+  const work = {
+    id: 'work', name: 'Work', days: [5], start: '09:00', end: '18:00',
+    homepage: 'https://work.example/', enabled: true,
+  };
+  const temporaryHomepage = { homepage: 'https://meeting.example/', startsAt: now, expiresAt: now + 3600_000 };
+  const { openPage, advanceTo, loadSettings } = setup(DEFAULT_HOMEPAGE, { now, rules: [work], temporaryHomepage });
+  const editing = openPage();
+  const switching = openPage();
+  await settle();
+  assert.equal(editing.target(), temporaryHomepage.homepage);
+
+  const draft = editing.addFridayRule('Draft', '09:00', '10:00', '');
+  editing.edit('base.example');
+  editing.edit('temporary-draft.example', 'temporaryUrl');
+  await switching.toggleAdvanced(false);
+  await settle();
+  assert.equal(editing.element('advancedEnabled').checked, false);
+  assert.equal(editing.element('scheduleDetails').hidden, true);
+  assert.equal(editing.element('previewSection').hidden, true);
+  assert.equal(editing.save.textContent, 'saveHomepage');
+  await editing.submit();
+  assert.deepEqual((await loadSettings()).rules, [work]);
+  assert.deepEqual((await loadSettings()).temporaryHomepage, temporaryHomepage);
+  assert.equal((await loadSettings()).homepage, 'https://base.example/');
+
+  advanceTo(temporaryHomepage.expiresAt);
+  await switching.toggleAdvanced(true);
+  await settle();
+  assert.equal(editing.element('scheduleDetails').hidden, false);
+  assert.equal(editing.save.textContent, 'saveBtn');
+  assert.equal(editing.input.value, 'https://base.example/');
+  assert.equal(editing.element('temporaryUrl').value, 'temporary-draft.example');
+  assert.equal(editing.element('rules').children.length, 2);
+  assert.equal(draft.name.value, 'Draft');
+  assert.equal(editing.target(), work.homepage);
+  assert.equal(editing.element('endTemporary').hidden, true);
+});
+
+test('切换保存失败时恢复开关和当前模式，并保留主页草稿', async () => {
+  const { openPage, failWrites } = setup(DEFAULT_HOMEPAGE, { advancedEnabled: false });
+  const page = openPage();
+  await settle();
+  page.edit('draft.example');
+  failWrites();
+  await page.toggleAdvanced(true);
+  assert.equal(page.element('advancedEnabled').checked, false);
+  assert.equal(page.element('currentSection').hidden, true);
+  assert.equal(page.element('advancedStatus').textContent, 'statusSaveFail');
+  assert.equal(page.input.value, 'draft.example');
+  assert.equal(page.save.disabled, false);
 });
 
 test('指定结束时刻必须在未来，写入后使用该时刻的时间戳', async () => {
