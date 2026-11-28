@@ -173,6 +173,31 @@
     });
   }
 
+  async function saveSchedule({ rules, expectedRevision }) {
+    const validation = validateSchedule(rules);
+    if (validation.errors.length) throw new Error('Invalid homepage schedule');
+    return navigator.locks.request('homepage-settings', async () => {
+      const local = await storageCall('local', 'get', STORAGE_KEYS);
+      const settings = localSettings(local);
+      if (!settings.advancedEnabled) throw settingsConflict('ADVANCED_DISABLED');
+      if (expectedRevision !== undefined && expectedRevision !== settings.revision) {
+        throw settingsConflict('SCHEDULE_CONFLICT');
+      }
+      const update = {
+        homepageSchedule: {
+          version: SCHEDULE_VERSION,
+          revision: settings.revision === Number.MAX_SAFE_INTEGER ? 1 : settings.revision + 1,
+          rules: validation.rules,
+        },
+        advancedEnabled: true,
+      };
+      await writeLocal(update);
+      const saved = localSettings({ ...local, ...update });
+      if (local.syncEnabled !== true) refreshHomepageMirror(saved);
+      return saved;
+    });
+  }
+
   async function saveAdvancedEnabled(advancedEnabled) {
     if (typeof advancedEnabled !== 'boolean') throw new TypeError('Expected a boolean');
     return navigator.locks.request('homepage-settings', async () => {
@@ -224,6 +249,7 @@
     normalizeHomepage,
     loadSettings,
     saveSettings,
+    saveSchedule,
     saveAdvancedEnabled,
     saveTemporaryHomepage,
     clearTemporaryHomepage,

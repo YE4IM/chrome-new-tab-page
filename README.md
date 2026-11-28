@@ -46,9 +46,9 @@ Turn on **Enable advanced features** to use temporary homepages, weekly rules, a
 | To | In Options |
 | --- | --- |
 | Set a base homepage | Choose Kagi, Google, Bing, or DuckDuckGo, or enter an HTTP or HTTPS address. The extension assumes HTTPS if you omit the scheme. Enter the full address for a local HTTP service, such as `http://localhost:3000/`. |
-| Schedule a different homepage | Under **Weekly schedule**, add a name, starting days, hours, and a destination. The start is inclusive and the end is exclusive. A Friday rule from 22:00 to 02:00 runs into Saturday. Adjust overlapping enabled rules before saving. |
+| Schedule a different homepage | Under **Weekly schedule**, add a name, starting days, hours, and a destination. The start is inclusive and the end is exclusive. A Friday rule from 22:00 to 02:00 runs into Saturday. Adjust overlapping enabled rules before saving. Save the weekly schedule independently of the base homepage. |
 | Switch temporarily | Enter a destination under **Temporary homepage** and enable it for 30 minutes, one hour, or until a date and time you choose. Select **End early** to apply the current schedule to the next new tab. |
-| Check a destination | **Current homepage** shows what opens now. **Time preview** lets you check a local date and time or jump to the temporary homepage’s expiry. The preview includes your draft. New tabs use the saved schedule. |
+| Check a destination | **Current homepage** is always shown and reflects what opens now. With advanced features on, **Preview by time** lets you check a local date and time or jump to the temporary homepage’s expiry. The preview includes your draft. New tabs use the saved schedule. |
 
 With advanced features on, a new tab checks the temporary homepage first, then the weekly schedule, then the base homepage. Weekly rules follow the device’s local time. Switching off takes effect on the next new tab and keeps your saved rules and the temporary homepage’s original expiry. When you switch back on, an expired temporary homepage is skipped.
 

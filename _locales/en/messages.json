@@ -96,7 +96,7 @@
     "message": "$FROM$–$TO$",
     "placeholders": { "from": { "content": "$1" }, "to": { "content": "$2" } }
   },
-  "previewTitle": { "message": "Time preview" },
+  "previewTitle": { "message": "Preview by time" },
   "previewDate": { "message": "Local date and time" },
   "previewZone": {
     "message": "Time zone: $ZONE$ ($OFFSET$)",
@@ -136,5 +136,22 @@
   "useSavedSchedule": { "message": "Load saved schedule" },
   "keepScheduleDraft": { "message": "Keep my draft" },
   "warnInvalidSchedule": { "message": "Invalid or overlapping weekly rules were skipped. Verify the remaining rules and save the schedule to repair it." },
-  "warnInvalidTemporary": { "message": "The saved temporary homepage is invalid. Enable a temporary homepage to replace it." }
+  "warnInvalidTemporary": { "message": "The saved temporary homepage is invalid. Enable a temporary homepage to replace it." },
+  "pickerPlaceholderDateTime": { "message": "Select date and time" },
+  "pickerPlaceholderTime": { "message": "Select time" },
+  "pickerDialogDateTime": { "message": "Choose date and time" },
+  "pickerDialogTime": { "message": "Choose time" },
+  "pickerPrevMonth": { "message": "Previous month" },
+  "pickerNextMonth": { "message": "Next month" },
+  "pickerChooseMonthYear": { "message": "Choose year and month" },
+  "pickerPrevYear": { "message": "Previous year" },
+  "pickerNextYear": { "message": "Next year" },
+  "pickerHour": { "message": "Hr" },
+  "pickerMinute": { "message": "Min" },
+  "pickerHourAria": { "message": "Hour" },
+  "pickerMinuteAria": { "message": "Minute" },
+  "pickerNow": { "message": "Now" },
+  "pickerClear": { "message": "Clear" },
+  "pickerDone": { "message": "Done" },
+  "pickerToday": { "message": "Today" }
 }

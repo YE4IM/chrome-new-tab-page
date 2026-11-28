@@ -413,3 +413,71 @@ test('本机存储拒绝写入时，下一次读取仍可重建权威配置的�
   assert.equal((await settings.loadSettings()).homepage, 'https://base.example/');
   assert.equal(settings.readHomepageMirror().homepage, 'https://base.example/');
 });
+
+test('saveSchedule 独立保存排程，不影响基础主页、临时主页或未完成的旧版迁移', async () => {
+  const { settings, local } = setup({
+    local: { homepage: 'local.example', syncEnabled: true, advancedEnabled: true },
+    sync: { homepage: 'synced.example' },
+  });
+  const saved = await settings.saveSchedule({ rules: [workRule], expectedRevision: 0 });
+  assert.equal(saved.homepage, 'https://local.example/');
+  assert.equal(saved.revision, 1);
+  assert.deepEqual(copy(saved.rules), [workRule]);
+  assert.equal(local.homepage, 'local.example');
+  assert.equal(local.syncEnabled, true);
+  assert.equal(settings.readHomepageMirror(), null);
+
+  await settings.loadSettings();
+  const { temporaryHomepage } = await settings.saveTemporaryHomepage({ homepage: 'meeting.example', durationMs: 60000 });
+  const updatedRule = { ...workRule, homepage: 'https://updated-work.example/' };
+  const afterSecondSave = await settings.saveSchedule({ rules: [updatedRule], expectedRevision: 1 });
+  assert.equal(afterSecondSave.homepage, 'https://synced.example/');
+  assert.deepEqual(copy(afterSecondSave.temporaryHomepage), copy(temporaryHomepage));
+  assert.deepEqual(copy(afterSecondSave.rules), [updatedRule]);
+  assert.equal(afterSecondSave.revision, 2);
+});
+
+test('saveSchedule 校验模式、版本冲突并可独立修复损坏排程', async () => {
+  const { settings } = setup({
+    local: {
+      homepage: 'base.example',
+      homepageSchedule: { version: 1, revision: 2, rules: [workRule, { ...workRule, homepage: 'file:///bad' }] },
+    },
+  });
+  const loaded = await settings.loadSettings();
+  assert.equal(loaded.scheduleNeedsRepair, true);
+  await assert.rejects(
+    settings.saveSchedule({ rules: [workRule], expectedRevision: 1 }),
+    { code: 'SCHEDULE_CONFLICT' },
+  );
+  const repaired = await settings.saveSchedule({ rules: [workRule], expectedRevision: 2 });
+  assert.equal(repaired.scheduleNeedsRepair, false);
+  assert.equal(repaired.revision, 3);
+
+  await settings.saveAdvancedEnabled(false);
+  await assert.rejects(
+    settings.saveSchedule({ rules: [], expectedRevision: 3 }),
+    { code: 'ADVANCED_DISABLED' },
+  );
+});
+
+test('并发保存基础主页、每周时段与临时主页时，三项设置全部保留', async () => {
+  const { settings, local } = setup({ local: { homepage: 'https://base.example/', advancedEnabled: true } });
+  const initial = await settings.loadSettings();
+  await Promise.all([
+    settings.saveSettings({ homepage: 'new-base.example', expectedHomepage: initial.homepage }),
+    settings.saveSchedule({ rules: [workRule], expectedRevision: initial.revision }),
+    settings.saveTemporaryHomepage({ homepage: 'meeting.example', durationMs: 60000 }),
+  ]);
+  const finalSettings = await settings.loadSettings();
+  assert.equal(finalSettings.homepage, 'https://new-base.example/');
+  assert.deepEqual(copy(finalSettings.rules), [workRule]);
+  assert.equal(finalSettings.temporaryHomepage.homepage, 'https://meeting.example/');
+  assert.equal(local.homepage, 'https://new-base.example/');
+  assert.deepEqual(copy(settings.readHomepageMirror()), {
+    homepage: 'https://new-base.example/',
+    rules: [workRule],
+    temporaryHomepage: copy(finalSettings.temporaryHomepage),
+    advancedEnabled: true,
+  });
+});

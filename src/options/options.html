@@ -10,23 +10,17 @@
 <body>
     <header class="app-header">
         <div class="shell brand">
-            <img src="../../icons/kagi-48.png" width="34" height="34" alt="">
+            <img src="../../icons/icon.svg" width="34" height="34" alt="">
             <span data-i18n="extName">主页新标签页</span>
         </div>
     </header>
 
     <main class="shell workspace">
-        <div class="intro">
-            <h1 data-i18n="fieldsetAria">主页设置</h1>
-            <p data-i18n="headerSubtitle">选择打开新标签页时显示的网站。</p>
-        </div>
-
-        <div class="settings-layout">
-            <section class="panel current" id="currentSection" aria-labelledby="currentTitle" hidden>
-                <h2 id="currentTitle" data-i18n="currentTitle">当前主页</h2>
-                <div class="result" id="currentResult" role="status" aria-live="polite" aria-atomic="true"></div>
-                <button type="button" class="btn secondary small" id="endTemporary" hidden data-i18n="endTemporary">提前结束</button>
-            </section>
+        <div class="workspace-header">
+            <div class="intro">
+                <h1 data-i18n="fieldsetAria">主页设置</h1>
+                <p data-i18n="headerSubtitle">选择打开新标签页时显示的网站。</p>
+            </div>
 
             <div class="mode-panel">
                 <div class="tabs-art" aria-hidden="true">
@@ -41,18 +35,29 @@
                     <label class="advanced-toggle">
                         <input type="checkbox" role="switch" id="advancedEnabled" disabled
                                aria-describedby="advancedHelp"
-                               aria-controls="currentSection temporaryForm scheduleDetails previewSection">
+                               aria-controls="temporaryForm scheduleForm previewSection">
                         <span data-i18n="advancedLabel">启用高级功能</span>
                     </label>
                     <p class="mode-description" id="advancedHelp" data-i18n="advancedHelp">设置临时主页、每周时段，并预览指定时间会打开的网站。</p>
                     <div class="status" id="advancedStatus" role="status" aria-atomic="true"></div>
                 </div>
             </div>
+        </div>
 
-            <form class="settings-editor" id="settingsForm" novalidate aria-busy="false">
-                <fieldset id="settingsFields" disabled aria-label="主页设置" data-i18n-attr="aria-label:fieldsetAria">
-                    <section class="panel homepage" aria-labelledby="baseTitle">
-                        <h2 id="baseTitle" data-i18n="homepageTitle">基础主页</h2>
+        <div class="settings-layout">
+            <section class="panel current" id="currentSection" aria-labelledby="currentTitle">
+                <h2 id="currentTitle" data-i18n="currentTitle">当前主页</h2>
+                <div class="result" id="currentResult" role="status" aria-live="polite" aria-atomic="true"></div>
+                <button type="button" class="btn secondary small" id="endTemporary" hidden data-i18n="endTemporary">提前结束</button>
+            </section>
+
+            <form class="panel homepage-card" id="settingsForm" novalidate aria-busy="false">
+                <section class="homepage" aria-labelledby="baseTitle">
+                    <fieldset id="settingsFields" disabled aria-label="主页设置" data-i18n-attr="aria-label:fieldsetAria">
+                        <div class="homepage-head">
+                            <h2 id="baseTitle" data-i18n="homepageTitle">基础主页</h2>
+                            <button type="button" class="btn btn-reset small" id="reset" data-i18n="resetBtn">恢复默认地址</button>
+                        </div>
                         <label class="field-label" for="hp" data-i18n="homepageLabel">主页地址</label>
                         <div class="input-wrap" id="inputWrap">
                             <img class="site-icon" id="siteLogo" src="../../icons/kagi.svg" alt="" aria-hidden="true" referrerpolicy="no-referrer">
@@ -82,47 +87,66 @@
                                 </button>
                             </div>
                         </div>
-                    </section>
-                </fieldset>
+                    </fieldset>
+                </section>
 
-                <div class="schedule-editor">
-                    <details class="panel schedule" id="scheduleDetails" hidden>
-                        <summary><span data-i18n="weeklyTitle">每周时段</span></summary>
-                        <fieldset id="scheduleFields" disabled>
-                            <p class="field-help" id="scheduleHelp" data-i18n="scheduleHelp">时段按设备本地时间执行，跨午夜的时段从所选星期开始。</p>
-                            <div id="rules" class="rules" aria-describedby="scheduleHelp"></div>
-                            <ul id="ruleErrors" class="error-msg rule-errors" role="alert" hidden></ul>
+                <div class="settings-footer">
+                    <fieldset id="settingsActions" disabled>
+                        <div class="actions form-actions">
+                            <button type="submit" class="btn btn-save" id="save" disabled data-i18n="saveHomepage">保存主页</button>
+                        </div>
+
+                        <div class="conflict" id="homepageConflict" hidden>
+                            <p class="error-msg" role="alert" id="homepageConflictMessage" data-i18n="homepageConflict"></p>
+                            <details>
+                                <summary id="homepageConflictSummary" data-i18n="savedHomepage"></summary>
+                                <p id="conflictHomepage"></p>
+                            </details>
                             <div class="actions">
-                                <button type="button" class="btn secondary" id="addRule" data-i18n="addRule">添加时段</button>
+                                <button type="button" class="btn secondary" id="useSavedHomepage" data-i18n="useSavedHomepage"></button>
+                                <button type="button" class="btn secondary" id="keepHomepageDraft" data-i18n="keepScheduleDraft">保留我的草稿</button>
                             </div>
-                        </fieldset>
-                    </details>
+                        </div>
+                    </fieldset>
+                    <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
+                    <button type="button" class="btn btn-reset small" id="retry" hidden data-i18n="retryBtn">重新读取设置</button>
+                </div>
+            </form>
 
-                    <div class="panel settings-footer">
-                        <fieldset id="settingsActions" disabled>
+            <form class="panel schedule-card" id="scheduleForm" novalidate aria-busy="false" hidden>
+                <details class="schedule" id="scheduleDetails">
+                    <summary><span data-i18n="weeklyTitle">每周时段</span></summary>
+                    <fieldset id="scheduleFields" disabled>
+                        <p class="field-help" id="scheduleHelp" data-i18n="scheduleHelp">时段按设备本地时间执行，跨午夜的时段从所选星期开始。</p>
+                        <div id="rules" class="rules" aria-describedby="scheduleHelp"></div>
+                        <ul id="ruleErrors" class="error-msg rule-errors" role="alert" hidden></ul>
+                        <div class="actions">
+                            <button type="button" class="btn secondary" id="addRule" data-i18n="addRule">添加时段</button>
+                        </div>
+                    </fieldset>
+
+                    <div class="schedule-footer">
+                        <fieldset id="scheduleActions" disabled>
                             <div class="actions form-actions">
-                                <button type="button" class="btn btn-reset" id="reset" data-i18n="resetBtn">恢复默认地址</button>
-                                <button type="submit" class="btn btn-save" id="save" disabled data-i18n="saveHomepage">保存主页</button>
+                                <button type="submit" class="btn btn-save" id="saveSchedule" disabled data-i18n="saveBtn">保存排程</button>
                             </div>
 
                             <div class="conflict" id="scheduleConflict" hidden>
-                                <p class="error-msg" role="alert" id="conflictMessage"></p>
+                                <p class="error-msg" role="alert" id="conflictMessage" data-i18n="scheduleConflict"></p>
                                 <details>
-                                    <summary id="conflictSummary"></summary>
-                                    <p id="conflictHomepage"></p>
+                                    <summary id="conflictSummary" data-i18n="savedSchedule"></summary>
                                     <ul id="conflictRules"></ul>
                                 </details>
                                 <div class="actions">
-                                    <button type="button" class="btn secondary" id="useSavedSchedule"></button>
+                                    <button type="button" class="btn secondary" id="useSavedSchedule" data-i18n="useSavedSchedule"></button>
                                     <button type="button" class="btn secondary" id="keepScheduleDraft" data-i18n="keepScheduleDraft">保留我的草稿</button>
                                 </div>
                             </div>
                         </fieldset>
-                        <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
-                        <button type="button" class="btn btn-reset small" id="retry" hidden data-i18n="retryBtn">重新读取设置</button>
-                        <div class="error-msg" id="settingsWarnings" role="status" hidden></div>
+                        <div class="status" id="scheduleStatus" role="status" aria-live="polite" aria-atomic="true"></div>
                     </div>
-                </div>
+                </details>
+                <div class="error-msg schedule-warning" id="scheduleWarning" role="status" hidden></div>
             </form>
 
             <form class="panel" id="temporaryForm" novalidate aria-labelledby="temporaryTitle" aria-busy="false" hidden>
@@ -144,7 +168,7 @@
                         </label>
                         <label class="control full-width" id="temporaryDateField" hidden>
                             <span class="field-label" data-i18n="temporaryDate">本地结束时间</span>
-                            <input id="temporaryDate" type="datetime-local" aria-describedby="temporaryDateError temporaryEndHint">
+                            <input id="temporaryDate" type="datetime-local" data-picker-action="clear" aria-describedby="temporaryDateError temporaryEndHint">
                             <span class="error-msg" id="temporaryDateError" role="alert" hidden></span>
                         </label>
                     </div>
@@ -154,14 +178,15 @@
                     </div>
                 </fieldset>
                 <div id="temporaryStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+                <div class="error-msg" id="temporaryWarning" role="status" hidden></div>
             </form>
 
             <section class="panel" id="previewSection" aria-labelledby="previewTitle" hidden>
-                <h2 id="previewTitle" data-i18n="previewTitle">时间预览</h2>
+                <h2 id="previewTitle" data-i18n="previewTitle">按时间预览</h2>
                 <fieldset id="previewFields" disabled aria-labelledby="previewTitle">
                     <label class="control">
                         <span class="field-label" data-i18n="previewDate">本地日期和时间</span>
-                        <input id="previewDate" type="datetime-local" aria-describedby="previewZone previewError">
+                        <input id="previewDate" type="datetime-local" data-picker-action="now" data-picker-now-target="previewNow" aria-describedby="previewZone previewError">
                     </label>
                     <p id="previewZone" class="field-help"></p>
                     <div class="actions">
@@ -212,6 +237,8 @@
     <script src="../shared/homepage.js"></script>
     <script src="../shared/settings.js"></script>
     <script src="../shared/i18n.js"></script>
+    <script src="datetime-picker.js"></script>
+    <script src="custom-select.js"></script>
     <script src="options.js"></script>
 </body>
 </html>

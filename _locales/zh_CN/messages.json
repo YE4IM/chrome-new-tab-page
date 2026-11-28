@@ -96,7 +96,7 @@
     "message": "$FROM$–$TO$",
     "placeholders": { "from": { "content": "$1" }, "to": { "content": "$2" } }
   },
-  "previewTitle": { "message": "时间预览" },
+  "previewTitle": { "message": "按时间预览" },
   "previewDate": { "message": "本地日期和时间" },
   "previewZone": {
     "message": "时区：$ZONE$（$OFFSET$）",
@@ -136,5 +136,22 @@
   "useSavedSchedule": { "message": "载入已保存的排程" },
   "keepScheduleDraft": { "message": "保留我的草稿" },
   "warnInvalidSchedule": { "message": "已跳过损坏或重叠的每周时段。请核对其余时段并保存排程以修复。" },
-  "warnInvalidTemporary": { "message": "已保存的临时主页无效。启用新的临时主页即可替换。" }
+  "warnInvalidTemporary": { "message": "已保存的临时主页无效。启用新的临时主页即可替换。" },
+  "pickerPlaceholderDateTime": { "message": "选择日期和时间" },
+  "pickerPlaceholderTime": { "message": "选择时间" },
+  "pickerDialogDateTime": { "message": "选择日期和时间" },
+  "pickerDialogTime": { "message": "选择时间" },
+  "pickerPrevMonth": { "message": "上个月" },
+  "pickerNextMonth": { "message": "下个月" },
+  "pickerChooseMonthYear": { "message": "选择年份和月份" },
+  "pickerPrevYear": { "message": "上一年" },
+  "pickerNextYear": { "message": "下一年" },
+  "pickerHour": { "message": "时" },
+  "pickerMinute": { "message": "分" },
+  "pickerHourAria": { "message": "小时" },
+  "pickerMinuteAria": { "message": "分钟" },
+  "pickerNow": { "message": "此刻" },
+  "pickerClear": { "message": "清除" },
+  "pickerDone": { "message": "确定" },
+  "pickerToday": { "message": "今天" }
 }

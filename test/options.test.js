@@ -47,6 +47,7 @@ function setup(homepage, options = {}) {
   const listeners = [];
   let { rules = [], temporaryHomepage = null, advancedEnabled = true, now = Date.now(), persistedHomepage } = options;
   let revision = 0;
+  let ruleId = 0;
   let writeFailed = false;
   let callbackId = 0;
   const scheduled = new Map();
@@ -80,7 +81,8 @@ function setup(homepage, options = {}) {
     async saveSettings({ homepage: nextHomepage, rules: nextRules, expectedRevision, expectedHomepage }) {
       if (writeFailed) throw new Error('storage unavailable');
       const persistedAddress = persistedHomepage ?? normalizeHomepage(homepage) ?? DEFAULT_HOMEPAGE;
-      if ((nextRules !== undefined && revision !== expectedRevision) || persistedAddress !== expectedHomepage) {
+      if ((nextRules !== undefined && revision !== expectedRevision) ||
+          (expectedHomepage !== undefined && persistedAddress !== expectedHomepage)) {
         throw Object.assign(new Error('conflict'), { code: 'SCHEDULE_CONFLICT' });
       }
       homepage = nextHomepage;
@@ -91,6 +93,17 @@ function setup(homepage, options = {}) {
         notify('homepageSchedule');
       }
       notify('homepage');
+      return loadSettings();
+    },
+    async saveSchedule({ rules: nextRules, expectedRevision }) {
+      if (writeFailed) throw new Error('storage unavailable');
+      if (!advancedEnabled) throw Object.assign(new Error('disabled'), { code: 'ADVANCED_DISABLED' });
+      if (expectedRevision !== undefined && revision !== expectedRevision) {
+        throw Object.assign(new Error('conflict'), { code: 'SCHEDULE_CONFLICT' });
+      }
+      rules = nextRules;
+      revision += 1;
+      notify('homepageSchedule');
       return loadSettings();
     },
     async saveAdvancedEnabled(enabled) {
@@ -129,7 +142,6 @@ function setup(homepage, options = {}) {
     Object.defineProperty(getElementById('siteLogo'), 'src', {
       set(value) { logoWrites.push(value); },
     });
-    let ruleId = 0;
     vm.runInNewContext(script, {
       URL,
       Date: class extends Date { static now() { return now; } },
@@ -251,7 +263,7 @@ test('另一个设置页保存后保留已编辑的草稿，并以新地址为�
   assert.equal(second.input.value, 'draft.example/path');
   assert.equal(second.status.textContent, 'statusOtherPageUpdate');
   assert.equal(second.save.disabled, true);
-  assert.equal(second.element('scheduleConflict').hidden, false);
+  assert.equal(second.element('homepageConflict').hidden, false);
 
   first.edit('https://draft.example/path');
   await first.submit();
@@ -332,11 +344,11 @@ test('同一版本的迁移配置会刷新当前主页并要求复核已有草�
   assert.equal(editing.target(), 'https://migrated.example/');
   assert.equal(editing.input.value, 'draft.example');
   assert.equal(editing.save.disabled, true);
-  assert.equal(editing.element('scheduleConflict').hidden, false);
+  assert.equal(editing.element('homepageConflict').hidden, false);
   await editing.submit();
   assert.equal(getHomepage(), 'https://migrated.example/');
 
-  editing.click('keepScheduleDraft');
+  editing.click('keepHomepageDraft');
   assert.equal(editing.save.disabled, false);
   await editing.submit();
   assert.equal(getHomepage(), 'https://draft.example/');
@@ -348,7 +360,7 @@ test('冲突时段标出相交星期和时间，停用冲突规则后即可保�
   await settle();
   const first = page.addFridayRule('First', '09:00', '12:00', 'first.example');
   const second = page.addFridayRule('Second', '11:00', '14:00', 'second.example');
-  await page.submit();
+  await page.submit('scheduleForm');
   assert.equal(page.element('ruleErrors').hidden, false);
   assert.equal(first.start['aria-invalid'], 'true');
   assert.equal(second.start['aria-invalid'], 'true');
@@ -357,7 +369,7 @@ test('冲突时段标出相交星期和时间，停用冲突规则后即可保�
   second.enabled.checked = false;
   page.element('rules').children.at(-1).dispatch('input');
   assert.equal(page.element('ruleErrors').hidden, true);
-  await page.submit();
+  await page.submit('scheduleForm');
   assert.deepEqual((await loadSettings()).rules.map(({ enabled }) => enabled), [true, false]);
 });
 
@@ -389,7 +401,7 @@ test('结束临时主页时，另一设置页保留未保存的排程', async ()
   assert.equal(editing.target(), DEFAULT_HOMEPAGE);
   assert.equal(editing.target('previewResult'), 'https://work.example/');
   assert.equal(editing.element('scheduleConflict').hidden, true);
-  await editing.submit();
+  await editing.submit('scheduleForm');
   const saved = await loadSettings();
   assert.equal(saved.rules[0].homepage, 'https://work.example/');
   assert.equal(saved.temporaryHomepage, null);
@@ -414,7 +426,7 @@ test('跨设置页切换时保留隐藏草稿，基础主页可独立保存且�
   await switching.toggleAdvanced(false);
   await settle();
   assert.equal(editing.element('advancedEnabled').checked, false);
-  assert.equal(editing.element('scheduleDetails').hidden, true);
+  assert.equal(editing.element('scheduleForm').hidden, true);
   assert.equal(editing.element('previewSection').hidden, true);
   assert.equal(editing.save.textContent, 'saveHomepage');
   await editing.submit();
@@ -425,8 +437,9 @@ test('跨设置页切换时保留隐藏草稿，基础主页可独立保存且�
   advanceTo(temporaryHomepage.expiresAt);
   await switching.toggleAdvanced(true);
   await settle();
-  assert.equal(editing.element('scheduleDetails').hidden, false);
-  assert.equal(editing.save.textContent, 'saveBtn');
+  assert.equal(editing.element('scheduleForm').hidden, false);
+  assert.equal(editing.save.textContent, 'saveHomepage');
+  assert.equal(editing.element('saveSchedule').textContent, 'saveBtn');
   assert.equal(editing.input.value, 'https://base.example/');
   assert.equal(editing.element('temporaryUrl').value, 'temporary-draft.example');
   assert.equal(editing.element('rules').children.length, 2);
@@ -443,7 +456,10 @@ test('切换保存失败时恢复开关和当前模式，并保留主页草稿',
   failWrites();
   await page.toggleAdvanced(true);
   assert.equal(page.element('advancedEnabled').checked, false);
-  assert.equal(page.element('currentSection').hidden, true);
+  assert.equal(page.element('scheduleForm').hidden, true);
+  assert.equal(page.element('temporaryForm').hidden, true);
+  assert.equal(page.element('previewSection').hidden, true);
+  assert.equal(page.target(), DEFAULT_HOMEPAGE);
   assert.equal(page.element('advancedStatus').textContent, 'statusSaveFail');
   assert.equal(page.input.value, 'draft.example');
   assert.equal(page.save.disabled, false);
@@ -478,4 +494,169 @@ test('旧设置迁移暂时写入失败时，排程保存使用本机基准', as
   page.edit('chosen.example');
   await page.submit();
   assert.equal(getHomepage(), 'https://chosen.example/');
+});
+
+test('刷新加载和跨设置页切换后，始终显示当前高级功能状态', async () => {
+  const offSetup = setup(DEFAULT_HOMEPAGE, { advancedEnabled: false });
+  const offPage = offSetup.openPage();
+  await settle();
+  assert.equal(offPage.element('advancedStatus').textContent, 'advancedOff');
+  assert.equal(offPage.element('advancedStatus').className, 'status');
+
+  const onSetup = setup(DEFAULT_HOMEPAGE, { advancedEnabled: true });
+  const first = onSetup.openPage();
+  const second = onSetup.openPage();
+  await settle();
+  assert.equal(first.element('advancedStatus').textContent, 'advancedOn');
+  assert.equal(first.element('advancedStatus').className, 'status success');
+
+  await second.toggleAdvanced(false);
+  await settle();
+  assert.equal(first.element('advancedStatus').textContent, 'advancedOff');
+  assert.equal(first.element('advancedStatus').className, 'status');
+  assert.equal(second.element('advancedStatus').textContent, 'advancedOff');
+  assert.equal(second.element('advancedStatus').className, 'status');
+
+  await second.toggleAdvanced(true);
+  await settle();
+  assert.equal(first.element('advancedStatus').textContent, 'advancedOn');
+  assert.equal(first.element('advancedStatus').className, 'status success');
+});
+
+test('当前主页在基础和高级模式下都展示并跟随保存与模式切换更新', async () => {
+  const now = new Date(2026, 10, 27, 17, 30).getTime();
+  const temporaryHomepage = { homepage: 'https://meeting.example/', startsAt: now, expiresAt: now + 3600_000 };
+  const { openPage } = setup(DEFAULT_HOMEPAGE, { now, advancedEnabled: false, temporaryHomepage });
+  const page = openPage();
+  await settle();
+
+  assert.equal(page.target(), DEFAULT_HOMEPAGE);
+  assert.equal(page.element('currentResult').lastElementChild.textContent, 'sourceBase');
+  assert.equal(page.element('endTemporary').hidden, true);
+
+  page.edit('https://www.google.com/');
+  await page.submit();
+  assert.equal(page.target(), 'https://www.google.com/');
+  assert.equal(page.element('currentResult').lastElementChild.textContent, 'sourceBase');
+  assert.equal(page.element('endTemporary').hidden, true);
+
+  await page.toggleAdvanced(true);
+  assert.equal(page.target(), temporaryHomepage.homepage);
+  assert.equal(page.element('endTemporary').hidden, false);
+
+  await page.toggleAdvanced(false);
+  assert.equal(page.target(), 'https://www.google.com/');
+  assert.equal(page.element('currentResult').lastElementChild.textContent, 'sourceBase');
+  assert.equal(page.element('endTemporary').hidden, true);
+});
+
+test('基础主页与每周时段独立保存，各自保留对方的无效或未保存草稿', async () => {
+  const { openPage, loadSettings } = setup(DEFAULT_HOMEPAGE);
+  const page = openPage();
+  await settle();
+
+  const rule = page.addFridayRule('Work', '09:00', '18:00', '');
+  page.edit('base.example');
+  await page.submit('settingsForm');
+  assert.equal((await loadSettings()).homepage, 'https://base.example/');
+  assert.deepEqual((await loadSettings()).rules, []);
+  assert.equal(page.element('ruleErrors').hidden, true);
+  assert.equal(rule.name.value, 'Work');
+  assert.equal(page.element('saveSchedule').disabled, false);
+
+  page.edit('file:///invalid');
+  rule.homepage.value = 'work.example';
+  page.element('rules').children.at(-1).dispatch('input');
+  await page.submit('scheduleForm');
+  assert.equal((await loadSettings()).homepage, 'https://base.example/');
+  assert.equal((await loadSettings()).rules[0].homepage, 'https://work.example/');
+  assert.equal(page.input.value, 'file:///invalid');
+  assert.equal(page.element('errMsg').hidden, true);
+  assert.equal(page.save.disabled, false);
+});
+
+test('跨设置页修改基础主页或每周时段互不冲突', async () => {
+  const work = {
+    id: 'work', name: 'Work', days: [5], start: '09:00', end: '18:00',
+    homepage: 'https://work.example/', enabled: true,
+  };
+  const { openPage, loadSettings } = setup(DEFAULT_HOMEPAGE, { rules: [work] });
+  const first = openPage();
+  const second = openPage();
+  await settle();
+
+  second.edit('base-draft.example');
+  first.addFridayRule('Evening', '19:00', '21:00', 'evening.example');
+  await first.submit('scheduleForm');
+  await settle();
+  assert.equal(second.input.value, 'base-draft.example');
+  assert.equal(second.element('homepageConflict').hidden, true);
+  assert.equal(second.element('scheduleConflict').hidden, true);
+  assert.equal(second.save.disabled, false);
+  await second.submit('settingsForm');
+  await settle();
+  assert.equal((await loadSettings()).homepage, 'https://base-draft.example/');
+
+  second.addFridayRule('Night', '22:00', '23:00', 'night.example');
+  first.edit('other-base.example');
+  await first.submit('settingsForm');
+  await settle();
+  assert.equal(second.element('homepageConflict').hidden, true);
+  assert.equal(second.element('scheduleConflict').hidden, true);
+  assert.equal(second.element('saveSchedule').disabled, false);
+  await second.submit('scheduleForm');
+  assert.equal((await loadSettings()).rules.length, 3);
+});
+
+test('每周时段跨设置页冲突会展开每周时段并只阻止保存排程，不影响基础主页', async () => {
+  const { openPage, loadSettings } = setup(DEFAULT_HOMEPAGE);
+  const first = openPage();
+  const second = openPage();
+  await settle();
+
+  second.edit('base-draft.example');
+  second.addFridayRule('DraftRule', '09:00', '12:00', 'draft-rule.example');
+  first.addFridayRule('SavedRule', '10:00', '13:00', 'saved-rule.example');
+  await first.submit('scheduleForm');
+  await settle();
+
+  assert.equal(second.element('scheduleConflict').hidden, false);
+  assert.equal(second.element('scheduleDetails').open, true);
+  assert.equal(second.element('saveSchedule').disabled, true);
+  assert.equal(second.element('homepageConflict').hidden, true);
+  assert.equal(second.save.disabled, false);
+
+  await second.submit('settingsForm');
+  await settle();
+  assert.equal((await loadSettings()).homepage, 'https://base-draft.example/');
+  assert.equal(second.element('scheduleConflict').hidden, false);
+
+  second.click('keepScheduleDraft');
+  assert.equal(second.element('scheduleConflict').hidden, true);
+  assert.equal(second.element('saveSchedule').disabled, false);
+  await second.submit('scheduleForm');
+  assert.equal((await loadSettings()).rules[0].homepage, 'https://draft-rule.example/');
+});
+
+test('同一设置页并发提交基础主页、每周时段和临时主页全部保留', async () => {
+  const now = new Date(2026, 10, 27, 17, 30).getTime();
+  const { openPage, loadSettings } = setup(DEFAULT_HOMEPAGE, { now });
+  const page = openPage();
+  await settle();
+
+  page.edit('base-concurrent.example');
+  page.addFridayRule('Work', '09:00', '18:00', 'work-concurrent.example');
+  page.edit('temp-concurrent.example', 'temporaryUrl');
+  await Promise.all([
+    page.submit('settingsForm'),
+    page.submit('scheduleForm'),
+    page.submit('temporaryForm'),
+  ]);
+  await settle();
+
+  const saved = await loadSettings();
+  assert.equal(saved.homepage, 'https://base-concurrent.example/');
+  assert.equal(saved.rules[0].homepage, 'https://work-concurrent.example/');
+  assert.equal(saved.temporaryHomepage.homepage, 'https://temp-concurrent.example/');
+  assert.equal(page.target(), 'https://temp-concurrent.example/');
 });

@@ -2,19 +2,21 @@
 
 [**English**](./CHANGELOG.md) | [中文](./CHANGELOG-zh-CN.md)
 
-## [Unreleased]
+## [2.3.1] - 2026-11-29
 
-Choose whether new tabs follow a schedule or always open your base homepage.
+Choose whether new tabs follow a schedule or always open your base homepage, with independent saving for base and schedule forms, custom date/time and dropdown controls, and a refreshed extension icon and interface.
 
 ### Added
 
 - **Enable advanced features** controls temporary homepages, weekly schedules, and time previews. Fresh installations start with it off. Upgrading from 2.3.0 turns it on if you have a saved weekly rule or an active temporary homepage.
+- Custom date/time pickers and dropdown selects in Options with keyboard navigation and locale-aware calendar and time controls, along with a dedicated extension icon.
 
 ### Changed
 
-- Turning the switch off applies to the next new tab and keeps saved rules and the temporary homepage’s original expiry. Turning it back on skips expired temporary homepages.
-- Save the base homepage independently in basic mode. Options tabs share the switch state and retain their own unsaved edits.
-- Reorganized Options so advanced mode shows the current destination above the homepage and schedule editors, with a single-column layout on narrow screens.
+- Turning advanced features off applies to the next new tab while keeping saved weekly rules and the temporary homepage’s original expiry. Turning it back on skips any temporary homepage that has already expired.
+- Base homepage, weekly schedule, and temporary homepage now save independently and preserve each other’s unsaved drafts. Multiple options tabs share the advanced toggle state and handle homepage and schedule conflicts separately.
+- **Current homepage** is now always visible in both basic and advanced modes and updates when settings save or the mode changes. **Time preview** has been renamed to **Preview by time**.
+- Refreshed the Options layout and new-tab recovery page styling, including single-column support on narrow screens and separate repair notices for invalid weekly rules and temporary homepages.
 
 ## [2.3.0] - 2026-11-25
 
@@ -85,7 +87,7 @@ The first release lets Chrome open a homepage of your choice in every new tab. T
 - Use the options and recovery pages in English or Simplified Chinese. The extension follows the browser language and falls back to English.
 - The extension requests only the `storage` permission and loads site icons locally.
 
-[Unreleased]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.3.0...main
+[2.3.1]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/YE4IM/chrome-new-tab-page/compare/v2.2.0...v2.2.1

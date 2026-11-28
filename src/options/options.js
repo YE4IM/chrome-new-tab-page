@@ -16,13 +16,16 @@
 
   const {
     DEFAULT_HOMEPAGE, normalizeHomepage, loadSettings, saveSettings,
-    saveAdvancedEnabled, saveTemporaryHomepage, clearTemporaryHomepage,
+    saveSchedule, saveAdvancedEnabled, saveTemporaryHomepage, clearTemporaryHomepage,
   } = HomepageSettings;
   const { resolveHomepage, validateSchedule } = HomepageRules;
   const form = byId('settingsForm');
-  const settingsFieldsets = ['settingsFields', 'scheduleFields', 'settingsActions'].map(byId);
+  const homepageFieldsets = ['settingsFields', 'settingsActions'].map(byId);
+  const scheduleForm = byId('scheduleForm');
+  const scheduleFieldsets = ['scheduleFields', 'scheduleActions'].map(byId);
   const input = byId('hp');
   const saveBtn = byId('save');
+  const saveScheduleBtn = byId('saveSchedule');
   const advancedToggle = byId('advancedEnabled');
   const advancedStatus = byId('advancedStatus');
   const logoImg = byId('siteLogo');
@@ -31,6 +34,8 @@
   const scheduleDetails = byId('scheduleDetails');
   const rulesContainer = byId('rules');
   const ruleErrors = byId('ruleErrors');
+  const scheduleStatus = byId('scheduleStatus');
+  const homepageConflict = byId('homepageConflict');
   const scheduleConflict = byId('scheduleConflict');
   const temporaryForm = byId('temporaryForm');
   const temporaryFields = byId('temporaryFields');
@@ -49,24 +54,28 @@
   let savedSettings = null;
   let draftRevision;
   let draftHomepage;
-  let conflicting = false;
+  let draftHomepageNeedsRepair = false;
+  let homepageConflicting = false;
+  let scheduleConflicting = false;
   let draftUrl;
   let draftRules;
   let showRuleErrors = false;
   let activeChip;
   let logoKey;
-  let saving = false;
+  let savingHomepage = false;
+  let savingSchedule = false;
   let changingTemporary = false;
   let changingMode = false;
   let refreshPending = false;
   let refreshing = false;
   let writesStarted = 0;
-  let btnRevertTimer;
+  let homepageBtnRevertTimer;
+  let scheduleBtnRevertTimer;
   let clockTimer;
   let previewMode = 'now';
   const rows = [];
   const advancedEnabled = () => savedSettings?.advancedEnabled === true;
-  const writing = () => saving || changingTemporary || changingMode;
+  const writing = () => savingHomepage || savingSchedule || changingTemporary || changingMode;
 
   function writeText(element, value) {
     if (element.textContent !== value) element.textContent = value;
@@ -75,6 +84,10 @@
   function showStatus(element, message, kind = '') {
     writeText(element, message);
     element.className = kind ? `status ${kind}` : 'status';
+  }
+
+  function showAdvancedState(enabled = advancedEnabled()) {
+    showStatus(advancedStatus, t(enabled ? 'advancedOn' : 'advancedOff'), enabled ? 'success' : '');
   }
 
   function fieldError(field, error, message = '') {
@@ -89,12 +102,12 @@
   }
 
   function updateWarnings(settings) {
-    const warnings = [];
-    if (settings.scheduleNeedsRepair) warnings.push(t('warnInvalidSchedule'));
-    if (settings.temporaryNeedsRepair) warnings.push(t('warnInvalidTemporary'));
-    const element = byId('settingsWarnings');
-    element.hidden = warnings.length === 0;
-    writeText(element, warnings.join(' '));
+    const scheduleWarning = byId('scheduleWarning');
+    scheduleWarning.hidden = !settings.scheduleNeedsRepair;
+    writeText(scheduleWarning, settings.scheduleNeedsRepair ? t('warnInvalidSchedule') : '');
+    const temporaryWarning = byId('temporaryWarning');
+    temporaryWarning.hidden = !settings.temporaryNeedsRepair;
+    writeText(temporaryWarning, settings.temporaryNeedsRepair ? t('warnInvalidTemporary') : '');
   }
 
   function weekday(day, length = 'long') {
@@ -229,10 +242,14 @@
       errors.length || rulesSignature(rules) !== rulesSignature(savedSettings.rules)
     ));
     const advanced = advancedEnabled();
-    const hasEdits = homepageEdited || (advanced && rulesEdited);
     return {
-      homepage: draftUrl.homepage, rules, errors, homepageEdited, rulesEdited, hasEdits,
-      canSave: hasEdits || Boolean(savedSettings?.needsRepair || (advanced && savedSettings?.scheduleNeedsRepair)),
+      homepage: draftUrl.homepage,
+      rules,
+      errors,
+      homepageEdited,
+      rulesEdited,
+      canSaveHomepage: homepageEdited || Boolean(savedSettings?.needsRepair),
+      canSaveSchedule: advanced && (rulesEdited || Boolean(savedSettings?.scheduleNeedsRepair)),
     };
   }
 
@@ -302,7 +319,7 @@
       return;
     }
     const letter = (host[0] || '?').toUpperCase().replace(/[&<>"']/g, '');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="14" fill="#26604b"/><text x="32" y="43" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white" text-anchor="middle">${letter}</text></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><style>rect{fill:#26604b}text{fill:#fff}@media(prefers-color-scheme:dark){rect{fill:#a6d7b7}text{fill:#112b20}}</style><rect width="64" height="64" rx="14"/><text x="32" y="43" font-family="system-ui,sans-serif" font-size="32" font-weight="600" text-anchor="middle">${letter}</text></svg>`;
     logoImg.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
     logoImg.alt = host ? t('logoHostAlt', [host]) : t('logoCustomAlt');
   }
@@ -318,49 +335,79 @@
       nextChip.setAttribute('aria-pressed', 'true');
       activeChip = nextChip;
     }
-    conflicting = Boolean(savedSettings && (
-      (state.homepageEdited && draftHomepage !== (savedSettings.persistedHomepage ?? savedSettings.homepage)) ||
-      (advancedEnabled() && state.hasEdits && draftRevision !== savedSettings.revision)
-    ));
-    renderConflict();
-    saveBtn.disabled = writing() || conflicting || !state.canSave;
+    const nextHomepageConflicting = Boolean(
+      savedSettings && state.homepageEdited && (
+        draftHomepage !== (savedSettings.persistedHomepage ?? savedSettings.homepage) ||
+        draftHomepageNeedsRepair !== Boolean(savedSettings.needsRepair)
+      ),
+    );
+    const nextScheduleConflicting = Boolean(
+      savedSettings && advancedEnabled() && state.rulesEdited && draftRevision !== savedSettings.revision,
+    );
+    const scheduleNewlyConflicted = nextScheduleConflicting && !scheduleConflicting;
+    homepageConflicting = nextHomepageConflicting;
+    scheduleConflicting = nextScheduleConflicting;
+    renderHomepageConflict();
+    renderScheduleConflict();
+    if (scheduleNewlyConflicted) scheduleDetails.open = true;
+    saveBtn.disabled = savingHomepage || changingMode || homepageConflicting || !state.canSaveHomepage;
+    saveScheduleBtn.disabled = savingSchedule || changingMode || scheduleConflicting || !state.canSaveSchedule;
     updateLogo(state.homepage, matched);
     renderPreview();
     return state;
   }
 
-  function clearSavedFeedback() {
-    clearTimeout(btnRevertTimer);
-    writeText(saveBtn, t(advancedEnabled() ? 'saveBtn' : 'saveHomepage'));
+  function clearHomepageSavedFeedback() {
+    clearTimeout(homepageBtnRevertTimer);
+    writeText(saveBtn, t('saveHomepage'));
     saveBtn.classList.remove('saved');
   }
 
-  function draftEdited() {
-    clearSavedFeedback();
-    const { homepageEdited, rulesEdited, hasEdits } = getDraftState();
-    if (!homepageEdited) draftHomepage = savedSettings.persistedHomepage ?? savedSettings.homepage;
-    if (!rulesEdited && !homepageEdited) draftRevision = savedSettings.revision;
+  function clearScheduleSavedFeedback() {
+    clearTimeout(scheduleBtnRevertTimer);
+    writeText(saveScheduleBtn, t('saveBtn'));
+    saveScheduleBtn.classList.remove('saved');
+  }
+
+  function homepageDraftEdited() {
+    clearHomepageSavedFeedback();
+    const { homepageEdited } = getDraftState();
+    if (!homepageEdited) {
+      draftHomepage = savedSettings.persistedHomepage ?? savedSettings.homepage;
+      draftHomepageNeedsRepair = Boolean(savedSettings.needsRepair);
+    }
     renderDraft();
-    if (conflicting) showStatus(statusEl, t('statusOtherPageUpdate'));
-    else if (hasEdits) showStatus(statusEl, t('statusDirty'));
+    if (homepageConflicting) showStatus(statusEl, t('statusOtherPageUpdate'));
+    else if (homepageEdited) showStatus(statusEl, t('statusDirty'));
     else settingsStatus(savedSettings);
+  }
+
+  function scheduleDraftEdited() {
+    clearScheduleSavedFeedback();
+    const { rulesEdited } = getDraftState();
+    if (!rulesEdited) draftRevision = savedSettings.revision;
+    renderDraft();
+    if (scheduleConflicting) showStatus(scheduleStatus, t('statusOtherPageUpdate'));
+    else if (rulesEdited) showStatus(scheduleStatus, t('statusDirty'));
+    else showStatus(scheduleStatus, '');
   }
 
   function editDraft() {
     byId('inputWrap').classList.remove('invalid');
     fieldError(input, byId('errMsg'));
-    draftEdited();
+    homepageDraftEdited();
   }
 
   function editRules() {
     draftRules = undefined;
     updateRuleLabels();
     if (showRuleErrors) renderRuleErrors(getDraftState().errors);
-    draftEdited();
+    scheduleDraftEdited();
   }
 
   function applyHomepageDraft(settings) {
     draftHomepage = settings.persistedHomepage ?? settings.homepage;
+    draftHomepageNeedsRepair = Boolean(settings.needsRepair);
     input.value = settings.homepage;
     byId('inputWrap').classList.remove('invalid');
     fieldError(input, byId('errMsg'));
@@ -377,18 +424,23 @@
     updateRuleLabels();
   }
 
-  function renderConflict() {
-    scheduleConflict.hidden = !conflicting;
-    if (!conflicting) return;
-    const advanced = advancedEnabled();
-    writeText(byId('conflictMessage'), t(advanced ? 'scheduleConflict' : 'homepageConflict'));
-    writeText(byId('conflictSummary'), t(advanced ? 'savedSchedule' : 'savedHomepage'));
-    writeText(byId('useSavedSchedule'), t(advanced ? 'useSavedSchedule' : 'useSavedHomepage'));
+  function renderHomepageConflict() {
+    homepageConflict.hidden = !homepageConflicting;
+    if (!homepageConflicting) return;
+    writeText(byId('homepageConflictMessage'), t('homepageConflict'));
+    writeText(byId('homepageConflictSummary'), t('savedHomepage'));
+    writeText(byId('useSavedHomepage'), t('useSavedHomepage'));
     byId('conflictHomepage').textContent = savedSettings.homepage;
+  }
+
+  function renderScheduleConflict() {
+    scheduleConflict.hidden = !scheduleConflicting;
+    if (!scheduleConflicting) return;
+    writeText(byId('conflictMessage'), t('scheduleConflict'));
+    writeText(byId('conflictSummary'), t('savedSchedule'));
+    writeText(byId('useSavedSchedule'), t('useSavedSchedule'));
     const list = byId('conflictRules');
     list.replaceChildren();
-    list.hidden = !advanced;
-    if (!advanced) return;
     if (!savedSettings.rules.length) {
       const item = document.createElement('li');
       item.textContent = t('noSavedRules');
@@ -416,22 +468,28 @@
     savedSettings = settings;
     const current = getDraftState();
     if (replaceDraft || (homepageChanged && !homepageEdited)) applyHomepageDraft(settings);
-    else if (!current.homepageEdited) draftHomepage = settings.persistedHomepage ?? settings.homepage;
-    const preserveRules = (rulesEdited || (advancedEnabled() && homepageEdited)) &&
-      (current.rulesEdited || (advancedEnabled() && current.homepageEdited));
-    if (replaceDraft || (rulesChanged && !preserveRules)) applyRulesDraft(settings);
-    if (modeChanged && !current.rulesEdited && !current.homepageEdited) {
-      draftRevision = settings.revision;
+    else if (!current.homepageEdited) {
+      draftHomepage = settings.persistedHomepage ?? settings.homepage;
+      draftHomepageNeedsRepair = Boolean(settings.needsRepair);
     }
-    if (replaceDraft || modeChanged) clearSavedFeedback();
-    if (modeChanged && !changingMode) showStatus(advancedStatus, '');
+    const preserveRules = rulesEdited && current.rulesEdited;
+    if (replaceDraft || (rulesChanged && !preserveRules)) applyRulesDraft(settings);
+    else if (!current.rulesEdited) draftRevision = settings.revision;
+    if (replaceDraft) clearHomepageSavedFeedback();
+    if (replaceDraft || modeChanged) clearScheduleSavedFeedback();
+    if ((replaceDraft || modeChanged) && !changingMode) showAdvancedState();
     renderMode();
     updateWarnings(settings);
-    const { hasEdits } = renderDraft();
-    if (replaceDraft || homepageChanged || rulesChanged || modeChanged || settings.warning !== previous?.warning) {
-      if (conflicting) showStatus(statusEl, t('statusOtherPageUpdate'));
-      else if (hasEdits) showStatus(statusEl, t('statusDirty'));
+    const { homepageEdited: nextHomepageEdited, rulesEdited: nextRulesEdited } = renderDraft();
+    if (replaceDraft || homepageChanged || settings.warning !== previous?.warning) {
+      if (homepageConflicting) showStatus(statusEl, t('statusOtherPageUpdate'));
+      else if (nextHomepageEdited) showStatus(statusEl, t('statusDirty'));
       else settingsStatus(settings);
+    }
+    if (replaceDraft || rulesChanged || modeChanged) {
+      if (scheduleConflicting) showStatus(scheduleStatus, t('statusOtherPageUpdate'));
+      else if (nextRulesEdited) showStatus(scheduleStatus, t('statusDirty'));
+      else showStatus(scheduleStatus, '');
     }
     updateClock();
   }
@@ -441,7 +499,7 @@
     advancedToggle.checked = advanced;
     advancedToggle.disabled = !savedSettings;
     advancedToggle.setAttribute('aria-disabled', String(writing()));
-    for (const id of ['currentSection', 'temporaryForm', 'scheduleDetails', 'previewSection']) {
+    for (const id of ['temporaryForm', 'scheduleForm', 'previewSection']) {
       byId(id).hidden = !advanced;
     }
   }
@@ -485,8 +543,8 @@
     writeText(byId('previewZone'), notes.join(' '));
     byId('previewExpiry').hidden = !temporaryHomepage;
 
-    const { homepage, rules, errors, hasEdits } = getDraftState();
-    byId('previewDraft').hidden = !hasEdits;
+    const { homepage, rules, errors, homepageEdited, rulesEdited } = getDraftState();
+    byId('previewDraft').hidden = !(homepageEdited || rulesEdited);
     const error = byId('previewError');
     const message = dateError ? t('invalidDate') : !homepage || errors.length ? t('previewInvalidDraft') : '';
     fieldError(previewDate, error, dateError ? message : '');
@@ -509,7 +567,7 @@
     const custom = temporaryDuration.value === 'custom';
     byId('temporaryDateField').hidden = !custom;
     endTemporary.hidden = !active;
-    endTemporary.disabled = changingTemporary;
+    endTemporary.disabled = changingTemporary || changingMode;
     writeText(startTemporary, t(active ? 'replaceTemporary' : 'startTemporary'));
     const expiry = proposedExpiry(now);
     const hint = byId('temporaryEndHint');
@@ -523,11 +581,12 @@
 
   function updateClock() {
     clearTimeout(clockTimer);
-    if (!advancedEnabled()) return;
+    if (!savedSettings) return;
     const now = Date.now();
+    const advanced = advancedEnabled();
     const { temporaryHomepage } = savedSettings;
     const result = resolveHomepage(savedSettings, now);
-    const active = result.source === 'temporary';
+    const active = advanced && result.source === 'temporary';
     const reason = active
       ? t('currentTemporary', [
           formatDate(temporaryHomepage.expiresAt),
@@ -535,6 +594,8 @@
         ])
       : describeResult(result, savedSettings);
     renderResult('currentResult', result, reason);
+    endTemporary.hidden = !active;
+    if (!advanced) return;
     renderTemporaryControls(now, active);
     renderPreview(now);
 
@@ -568,19 +629,25 @@
     }
   }
 
-  function setEditorDisabled(disabled) {
-    for (const fieldset of settingsFieldsets) fieldset.disabled = disabled;
+  function setHomepageDisabled(disabled) {
+    for (const fieldset of homepageFieldsets) fieldset.disabled = disabled;
+  }
+
+  function setScheduleDisabled(disabled) {
+    for (const fieldset of scheduleFieldsets) fieldset.disabled = disabled;
   }
 
   async function initialize() {
-    setEditorDisabled(true);
+    setHomepageDisabled(true);
+    setScheduleDisabled(true);
     temporaryFields.disabled = true;
     byId('previewFields').disabled = true;
     retryBtn.hidden = true;
     showStatus(statusEl, t('statusLoading'));
     try {
       applySaved(await loadSettings(), true);
-      setEditorDisabled(false);
+      setHomepageDisabled(false);
+      setScheduleDisabled(false);
       temporaryFields.disabled = false;
       byId('previewFields').disabled = false;
       if (refreshPending) void refreshSavedSettings();
@@ -592,53 +659,99 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (writing() || !savedSettings || conflicting) return;
-    const advanced = advancedEnabled();
-    const { homepage, rules, errors, canSave } = getDraftState();
-    if (!canSave) return;
-    if (advanced && errors.length) {
-      showRuleErrors = true;
-      scheduleDetails.open = true;
-    }
-    const firstRuleError = advanced ? renderRuleErrors(errors) : null;
-    if (!homepage || firstRuleError) {
-      byId('inputWrap').classList.toggle('invalid', !homepage);
-      fieldError(input, byId('errMsg'), homepage ? '' : t('errMsg'));
-      (homepage ? firstRuleError : input).focus();
+    if (savingHomepage || changingMode || !savedSettings || homepageConflicting) return;
+    const { homepage, canSaveHomepage } = getDraftState();
+    if (!canSaveHomepage) return;
+    if (!homepage) {
+      byId('inputWrap').classList.add('invalid');
+      fieldError(input, byId('errMsg'), t('errMsg'));
+      input.focus();
       return;
     }
 
-    saving = true;
+    savingHomepage = true;
     renderMode();
-    writesStarted += 1;
-    setEditorDisabled(true);
+    const writeId = ++writesStarted;
+    setHomepageDisabled(true);
     form.setAttribute('aria-busy', 'true');
-    clearSavedFeedback();
+    clearHomepageSavedFeedback();
     writeText(saveBtn, t('saveBtnSaving'));
     showStatus(statusEl, t('statusSaving'));
     try {
       const saved = await saveSettings({
         homepage, expectedHomepage: draftHomepage,
-        ...(advanced ? { rules, expectedRevision: draftRevision } : {}),
       });
-      if (!advanced) applyHomepageDraft(saved);
-      applySaved(saved, advanced);
+      applyHomepageDraft(saved);
+      if (writesStarted === writeId) applySaved(saved);
+      else refreshPending = true;
       showStatus(statusEl, t('statusSaved'), 'success');
       writeText(saveBtn, t('saveBtnSaved'));
       saveBtn.classList.add('saved');
-      btnRevertTimer = setTimeout(clearSavedFeedback, 2000);
+      homepageBtnRevertTimer = setTimeout(clearHomepageSavedFeedback, 2000);
     } catch (error) {
-      clearSavedFeedback();
-      if (error?.code === 'SCHEDULE_CONFLICT' || error?.code === 'ADVANCED_DISABLED') {
+      clearHomepageSavedFeedback();
+      if (error?.code === 'SCHEDULE_CONFLICT') {
         showStatus(statusEl, t('statusOtherPageUpdate'), 'error');
         refreshPending = true;
       } else {
         showStatus(statusEl, t('statusSaveFail'), 'error');
       }
     } finally {
-      saving = false;
-      setEditorDisabled(false);
+      savingHomepage = false;
+      setHomepageDisabled(false);
       form.setAttribute('aria-busy', 'false');
+      renderMode();
+      renderDraft();
+      if (refreshPending) void refreshSavedSettings();
+    }
+  });
+
+  scheduleForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (savingSchedule || changingMode || !savedSettings || !advancedEnabled() || scheduleConflicting) return;
+    const { rules, errors, canSaveSchedule } = getDraftState();
+    if (!canSaveSchedule) return;
+    if (errors.length) {
+      showRuleErrors = true;
+      scheduleDetails.open = true;
+    }
+    const firstRuleError = renderRuleErrors(errors);
+    if (firstRuleError) {
+      firstRuleError.focus();
+      return;
+    }
+
+    savingSchedule = true;
+    renderMode();
+    const writeId = ++writesStarted;
+    setScheduleDisabled(true);
+    scheduleForm.setAttribute('aria-busy', 'true');
+    clearScheduleSavedFeedback();
+    writeText(saveScheduleBtn, t('saveBtnSaving'));
+    showStatus(scheduleStatus, t('statusSaving'));
+    try {
+      const saved = await saveSchedule({
+        rules, expectedRevision: draftRevision,
+      });
+      applyRulesDraft(saved);
+      if (writesStarted === writeId) applySaved(saved);
+      else refreshPending = true;
+      showStatus(scheduleStatus, t('statusSaved'), 'success');
+      writeText(saveScheduleBtn, t('saveBtnSaved'));
+      saveScheduleBtn.classList.add('saved');
+      scheduleBtnRevertTimer = setTimeout(clearScheduleSavedFeedback, 2000);
+    } catch (error) {
+      clearScheduleSavedFeedback();
+      if (error?.code === 'SCHEDULE_CONFLICT' || error?.code === 'ADVANCED_DISABLED') {
+        showStatus(scheduleStatus, t('statusOtherPageUpdate'), 'error');
+        refreshPending = true;
+      } else {
+        showStatus(scheduleStatus, t('statusSaveFail'), 'error');
+      }
+    } finally {
+      savingSchedule = false;
+      setScheduleDisabled(false);
+      scheduleForm.setAttribute('aria-busy', 'false');
       renderMode();
       renderDraft();
       if (refreshPending) void refreshSavedSettings();
@@ -653,12 +766,12 @@
     const enabled = advancedToggle.checked;
     changingMode = true;
     writesStarted += 1;
-    advancedToggle.setAttribute('aria-disabled', 'true');
+    renderMode();
     renderDraft();
     showStatus(advancedStatus, t('statusSaving'));
     try {
       applySaved(await saveAdvancedEnabled(enabled));
-      showStatus(advancedStatus, t(enabled ? 'advancedOn' : 'advancedOff'), 'success');
+      showAdvancedState(enabled);
     } catch {
       showStatus(advancedStatus, t('statusSaveFail'), 'error');
     } finally {
@@ -670,18 +783,19 @@
   });
 
   async function changeTemporary(operation, success) {
-    if (writing() || !advancedEnabled()) return;
+    if (changingTemporary || changingMode || !advancedEnabled()) return;
     changingTemporary = true;
     renderMode();
     renderDraft();
-    writesStarted += 1;
+    const writeId = ++writesStarted;
     temporaryFields.disabled = true;
     endTemporary.disabled = true;
     temporaryForm.setAttribute('aria-busy', 'true');
     showStatus(temporaryStatus, t('statusSaving'));
     try {
       const settings = await operation();
-      applySaved(settings);
+      if (writesStarted === writeId) applySaved(settings);
+      else refreshPending = true;
       showStatus(temporaryStatus, t(success), 'success');
       return true;
     } catch (error) {
@@ -705,7 +819,7 @@
 
   temporaryForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (writing() || !advancedEnabled()) return;
+    if (changingTemporary || changingMode || !advancedEnabled()) return;
     const homepage = normalizeHomepage(temporaryUrl.value);
     fieldError(temporaryUrl, byId('temporaryUrlError'), homepage ? '' : t('errMsg'));
     const now = Date.now();
@@ -761,19 +875,26 @@
     editRules();
     row.controls.name.focus();
   });
-  byId('useSavedSchedule').addEventListener('click', () => {
-    if (advancedEnabled()) applySaved(savedSettings, true);
-    else {
-      applyHomepageDraft(savedSettings);
-      draftEdited();
-    }
+  byId('useSavedHomepage').addEventListener('click', () => {
+    applyHomepageDraft(savedSettings);
+    homepageDraftEdited();
     input.focus();
   });
-  byId('keepScheduleDraft').addEventListener('click', () => {
+  byId('keepHomepageDraft').addEventListener('click', () => {
     draftHomepage = savedSettings.persistedHomepage ?? savedSettings.homepage;
-    if (advancedEnabled()) draftRevision = savedSettings.revision;
-    draftEdited();
+    draftHomepageNeedsRepair = Boolean(savedSettings.needsRepair);
+    homepageDraftEdited();
     saveBtn.focus();
+  });
+  byId('useSavedSchedule').addEventListener('click', () => {
+    applyRulesDraft(savedSettings);
+    scheduleDraftEdited();
+    byId('addRule').focus();
+  });
+  byId('keepScheduleDraft').addEventListener('click', () => {
+    draftRevision = savedSettings.revision;
+    scheduleDraftEdited();
+    saveScheduleBtn.focus();
   });
   previewDate.addEventListener('input', () => {
     previewMode = 'custom';
